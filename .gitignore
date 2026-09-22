@@ -1,0 +1,26 @@
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/android/.gradle/
+mobile/android/local.properties
+
+# Node
+admin/node_modules/
+admin/dist/
+admin/.env
+admin/.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+*.keystore
+*.jks
+.env
+.env.*
+!.env.example

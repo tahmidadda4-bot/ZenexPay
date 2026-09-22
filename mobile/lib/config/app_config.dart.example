@@ -1,0 +1,6 @@
+/// Public Supabase client configuration for ZenexPay.
+/// The publishable key is intended for use in client applications.
+class AppConfig {
+  static const supabaseUrl = 'https://apzsfnehraucfmhynff.supabase.co';
+  static const supabaseAnonKey = 'sb_publishable_osln-xAJ21WpH9NV54pFFA_PzV1d2_Q';
+}
