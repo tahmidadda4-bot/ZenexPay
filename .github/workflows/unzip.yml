@@ -1,0 +1,54 @@
+name: Extract ZenexPay ZIP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract ZIP
+        run: |
+          set -e
+
+          ZIP_FILE="$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)"
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No ZIP file found in repository root."
+            exit 1
+          fi
+
+          mkdir -p /tmp/zenexpay_extract
+          unzip -o "$ZIP_FILE" -d /tmp/zenexpay_extract
+
+          ROOT="$(find /tmp/zenexpay_extract -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+
+          if [ -n "$ROOT" ] && [ "$(find /tmp/zenexpay_extract -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]; then
+            cp -a "$ROOT"/. .
+          else
+            cp -a /tmp/zenexpay_extract/. .
+          fi
+
+          rm -f "$ZIP_FILE"
+
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "Extract ZenexPay project"
+          git push
