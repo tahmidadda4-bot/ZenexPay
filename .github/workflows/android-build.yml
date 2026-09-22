@@ -1,4 +1,3 @@
-
 name: ZenexPay Android APK
 
 on:
@@ -9,20 +8,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - run: |
-          mkdir -p lib/config
-          cp lib/config/app_config.dart.example lib/config/app_config.dart
-      - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+
+      - name: Create Android project files
+        working-directory: mobile
+        run: flutter create --platforms=android .
+
+      - name: Configure Supabase
+        working-directory: mobile
+        run: cp lib/config/app_config.dart.example lib/config/app_config.dart
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: mobile
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: zenexpay-apk
           path: mobile/build/app/outputs/flutter-apk/app-release.apk
