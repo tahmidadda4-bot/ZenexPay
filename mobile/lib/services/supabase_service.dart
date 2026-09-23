@@ -55,9 +55,11 @@ class SupabaseService {
 
   static String get uid {
     final user = client.auth.currentUser;
+
     if (user == null) {
       throw Exception('Not authenticated');
     }
+
     return user.id;
   }
 
@@ -220,6 +222,7 @@ class SupabaseService {
 
     final submissions =
         List<Map<String, dynamic>>.from(submissionData);
+
     final transactions =
         List<Map<String, dynamic>>.from(transactionData);
 
@@ -254,15 +257,23 @@ class SupabaseService {
     for (final row in transactions) {
       final amount =
           double.tryParse('${row['amount'] ?? 0}') ?? 0;
-      final type = '${row['type'] ?? ''}'.toLowerCase();
+
+      final type =
+          '${row['type'] ?? ''}'.toLowerCase();
 
       DateTime? date;
+
       try {
-        date = DateTime.parse('${row['created_at']}').toLocal();
+        date = DateTime.parse(
+          '${row['created_at']}',
+        ).toLocal();
       } catch (_) {}
 
-      final isWithdrawal = type.contains('withdraw');
-      final isEarn = type.contains('earn') ||
+      final isWithdrawal =
+          type.contains('withdraw');
+
+      final isEarn =
+          type.contains('earn') ||
           type.contains('reward') ||
           type == 'credit' ||
           type == 'task_reward';
@@ -272,7 +283,8 @@ class SupabaseService {
       } else if (isEarn) {
         totalEarned += amount.abs();
 
-        if (date != null && !date.isBefore(monthStart)) {
+        if (date != null &&
+            !date.isBefore(monthStart)) {
           monthEarned += amount.abs();
         }
       }
@@ -280,55 +292,81 @@ class SupabaseService {
 
     if (totalEarned == 0) {
       for (final row in submissions) {
-        if ('${row['status'] ?? ''}'.toLowerCase() != 'approved') {
+        if ('${row['status'] ?? ''}'.toLowerCase() !=
+            'approved') {
           continue;
         }
 
         final task = row['tasks'];
+
         if (task is Map) {
           totalEarned +=
-              double.tryParse('${task['reward'] ?? 0}') ?? 0;
+              double.tryParse(
+                    '${task['reward'] ?? 0}',
+                  ) ??
+                  0;
         }
       }
     }
 
     if (monthEarned == 0) {
       for (final row in submissions) {
-        if ('${row['status'] ?? ''}'.toLowerCase() != 'approved') {
+        if ('${row['status'] ?? ''}'.toLowerCase() !=
+            'approved') {
           continue;
         }
 
         DateTime? date;
+
         try {
-          date = DateTime.parse('${row['created_at']}').toLocal();
+          date = DateTime.parse(
+            '${row['created_at']}',
+          ).toLocal();
         } catch (_) {}
 
-        if (date == null || date.isBefore(monthStart)) continue;
+        if (date == null ||
+            date.isBefore(monthStart)) {
+          continue;
+        }
 
         final task = row['tasks'];
+
         if (task is Map) {
           monthEarned +=
-              double.tryParse('${task['reward'] ?? 0}') ?? 0;
+              double.tryParse(
+                    '${task['reward'] ?? 0}',
+                  ) ??
+                  0;
         }
       }
     }
 
     final points = <DailyPoint>[];
-    final start = DateTime(now.year, now.month, now.day)
-        .subtract(const Duration(days: 6));
+
+    final start =
+        DateTime(now.year, now.month, now.day)
+            .subtract(
+              const Duration(days: 6),
+            );
 
     for (int i = 0; i < 7; i++) {
-      final day = start.add(Duration(days: i));
+      final day =
+          start.add(Duration(days: i));
+
       double amount = 0;
 
       for (final row in submissions) {
-        if ('${row['status'] ?? ''}'.toLowerCase() != 'approved') {
+        if ('${row['status'] ?? ''}'.toLowerCase() !=
+            'approved') {
           continue;
         }
 
         DateTime? date;
+
         try {
-          date = DateTime.parse('${row['created_at']}').toLocal();
+          date = DateTime.parse(
+            '${row['created_at']}',
+          ).toLocal();
         } catch (_) {}
 
         if (date == null ||
@@ -339,9 +377,13 @@ class SupabaseService {
         }
 
         final task = row['tasks'];
+
         if (task is Map) {
           amount +=
-              double.tryParse('${task['reward'] ?? 0}') ?? 0;
+              double.tryParse(
+                    '${task['reward'] ?? 0}',
+                  ) ??
+                  0;
         }
       }
 
@@ -354,11 +396,16 @@ class SupabaseService {
     }
 
     final activeDays = <String>{};
+
     for (final row in submissions) {
       DateTime? date;
+
       try {
-        date = DateTime.parse('${row['created_at']}').toLocal();
+        date = DateTime.parse(
+          '${row['created_at']}',
+        ).toLocal();
       } catch (_) {}
+
       if (date != null) {
         activeDays.add(
           '${date.year}-${date.month}-${date.day}',
@@ -367,17 +414,25 @@ class SupabaseService {
     }
 
     int streak = 0;
-    var cursor = DateTime(now.year, now.month, now.day);
+
+    var cursor =
+        DateTime(now.year, now.month, now.day);
 
     while (activeDays.contains(
       '${cursor.year}-${cursor.month}-${cursor.day}',
     )) {
       streak++;
-      cursor = cursor.subtract(const Duration(days: 1));
+
+      cursor = cursor.subtract(
+        const Duration(days: 1),
+      );
     }
 
     final balance =
-        double.tryParse('${walletRow?['balance'] ?? 0}') ?? 0;
+        double.tryParse(
+              '${walletRow?['balance'] ?? 0}',
+            ) ??
+            0;
 
     return UserAnalytics(
       totalEarned: totalEarned,
@@ -399,12 +454,14 @@ class SupabaseService {
 
   static Future<ReferralInfo> referralInfo() async {
     final user = client.auth.currentUser;
+
     final metadata = user?.userMetadata ?? {};
 
-    String code = '${metadata['referral_code'] ?? ''}'.trim();
+    String code =
+        '${metadata['referral_code'] ?? ''}'.trim();
+
     int successful = 0;
 
-    // রেফারেল টেবিল থেকে ইউজারের রেফারেল কাউন্ট আনার অংশ
     try {
       final rows = await client
           .from('referrals')
@@ -424,12 +481,14 @@ class SupabaseService {
             .eq('id', uid)
             .maybeSingle();
 
-        code = '${row?['referral_code'] ?? ''}'.trim();
+        code =
+            '${row?['referral_code'] ?? ''}'.trim();
       } catch (_) {}
     }
 
     if (code.isEmpty) {
-      code = 'ZENEX-${uid.substring(0, 8).toUpperCase()}';
+      code =
+          'ZENEX-${uid.substring(0, 8).toUpperCase()}';
     }
 
     return ReferralInfo(
@@ -438,10 +497,15 @@ class SupabaseService {
     );
   }
 
-  static Future<void> claimReferral(String code) async {
+  static Future<void> claimReferral(
+    String code,
+  ) async {
     final value = code.trim().toUpperCase();
+
     if (value.isEmpty) {
-      throw Exception('Referral code cannot be empty.');
+      throw Exception(
+        'Referral code cannot be empty.',
+      );
     }
 
     await client.rpc(
@@ -462,13 +526,16 @@ class SupabaseService {
     );
 
     if (result == null) {
-      throw Exception('Could not create support chat.');
+      throw Exception(
+        'Could not create support chat.',
+      );
     }
 
     return result.toString();
   }
 
-  static Future<Map<String, dynamic>?> getMySupportChat() async {
+  static Future<Map<String, dynamic>?>
+      getMySupportChat() async {
     final data = await client.rpc(
       'get_my_support_chat',
     );
@@ -478,13 +545,16 @@ class SupabaseService {
     }
 
     if (data is List && data.isNotEmpty) {
-      return Map<String, dynamic>.from(data.first);
+      return Map<String, dynamic>.from(
+        data.first,
+      );
     }
 
     return null;
   }
 
-  static Future<List<Map<String, dynamic>>> supportMessages(
+  static Future<List<Map<String, dynamic>>>
+      supportMessages(
     String conversationId,
   ) async {
     final data = await client
@@ -492,10 +562,18 @@ class SupabaseService {
         .select(
           'id,conversation_id,sender_id,sender_type,message,is_read,created_at',
         )
-        .eq('conversation_id', conversationId)
-        .order('created_at', ascending: true);
+        .eq(
+          'conversation_id',
+          conversationId,
+        )
+        .order(
+          'created_at',
+          ascending: true,
+        );
 
-    return List<Map<String, dynamic>>.from(data);
+    return List<Map<String, dynamic>>.from(
+      data,
+    );
   }
 
   static Future<String> sendSupportMessage({
@@ -505,7 +583,9 @@ class SupabaseService {
     final text = message.trim();
 
     if (text.isEmpty) {
-      throw Exception('Message cannot be empty.');
+      throw Exception(
+        'Message cannot be empty.',
+      );
     }
 
     final result = await client.rpc(
@@ -517,7 +597,9 @@ class SupabaseService {
     );
 
     if (result == null) {
-      throw Exception('Message could not be sent.');
+      throw Exception(
+        'Message could not be sent.',
+      );
     }
 
     return result.toString();
@@ -534,22 +616,38 @@ class SupabaseService {
     );
   }
 
+  // =========================================================
+  // REALTIME SUPPORT CHAT
+  // =========================================================
+
   static RealtimeChannel supportChatChannel(
-    String conversationId,
-  ) {
-    return client
-        .channel('support-chat-$conversationId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'support_messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'conversation_id',
-            value: conversationId,
-          ),
-          callback: (payload) {},
-        )
-        .subscribe();
+    String conversationId, {
+    required Future<void> Function() onMessage,
+  }) {
+    final channel = client.channel(
+      'support-chat-$conversationId',
+    );
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'support_messages',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'conversation_id',
+        value: conversationId,
+      ),
+      callback: (payload) async {
+        try {
+          await onMessage();
+        } catch (_) {
+          // Ignore realtime callback errors.
+        }
+      },
+    );
+
+    channel.subscribe();
+
+    return channel;
   }
 }
