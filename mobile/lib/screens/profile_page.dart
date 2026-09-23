@@ -200,19 +200,25 @@ class ProfilePage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
 
-                const ListTile(
-                  leading: CircleAvatar(
-                    child: Icon(Icons.security_outlined),
-                  ),
-                  title: Text(
-                    'Account security',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text('Authenticated with Supabase'),
-                ),
-              ],
-            ),
-          ),
+                ListTile(
+  leading: const CircleAvatar(
+    child: Icon(Icons.security_outlined),
+  ),
+  title: const Text(
+    'Account security',
+    style: TextStyle(fontWeight: FontWeight.w800),
+  ),
+  subtitle: const Text(
+    'Password and account security',
+  ),
+  trailing: const Icon(Icons.chevron_right_rounded),
+  onTap: () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const SecurityPage(),
+    ),
+  ),
+),
 
           const SizedBox(height: 18),
 
