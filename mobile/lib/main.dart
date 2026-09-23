@@ -140,7 +140,7 @@ class _RecoveryGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const UpdatePasswordPage();
+    return UpdatePasswordPage();
   }
 }
 
