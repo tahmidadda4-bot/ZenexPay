@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,7 +34,8 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _initializeChat() async {
     try {
-      final id = await SupabaseService.getOrCreateSupportChat();
+      final id =
+          await SupabaseService.getOrCreateSupportChat();
 
       conversationId = id;
 
@@ -63,7 +62,8 @@ class _ChatPageState extends State<ChatPage> {
 
     if (id == null) return;
 
-    final data = await SupabaseService.supportMessages(id);
+    final data =
+        await SupabaseService.supportMessages(id);
 
     if (!mounted) return;
 
@@ -79,36 +79,32 @@ class _ChatPageState extends State<ChatPage> {
 
     if (id == null) return;
 
-    realtimeChannel = SupabaseService.supportChatChannel(id);
-
-    realtimeChannel!.onPostgresChanges(
-      event: PostgresChangeEvent.insert,
-      schema: 'public',
-      table: 'support_messages',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'conversation_id',
-        value: id,
-      ),
-      callback: (payload) async {
+    realtimeChannel =
+        SupabaseService.supportChatChannel(
+      id,
+      onMessage: () async {
         await _loadMessages();
 
         if (mounted) {
-          await SupabaseService.markSupportMessagesRead(id);
+          await SupabaseService
+              .markSupportMessagesRead(id);
         }
       },
     );
   }
 
   Future<void> _sendMessage() async {
-    final text = messageController.text.trim();
+    final text =
+        messageController.text.trim();
 
     if (text.isEmpty) return;
 
     final id = conversationId;
 
     if (id == null) {
-      _showError('Chat is not ready yet.');
+      _showError(
+        'Chat is not ready yet.',
+      );
       return;
     }
 
@@ -126,6 +122,7 @@ class _ChatPageState extends State<ChatPage> {
 
       messageController.clear();
 
+      // Immediately refresh own message.
       await _loadMessages();
     } catch (e) {
       if (mounted) {
@@ -141,12 +138,16 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!scrollController.hasClients) return;
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) {
+      if (!scrollController.hasClients) {
+        return;
+      }
 
       scrollController.animateTo(
         scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
+        duration:
+            const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
     });
@@ -158,7 +159,10 @@ class _ChatPageState extends State<ChatPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          message.replaceFirst('Exception: ', ''),
+          message.replaceFirst(
+            'Exception: ',
+            '',
+          ),
         ),
       ),
     );
@@ -168,7 +172,10 @@ class _ChatPageState extends State<ChatPage> {
     if (value == null) return '';
 
     try {
-      final date = DateTime.parse(value.toString()).toLocal();
+      final date =
+          DateTime.parse(
+            value.toString(),
+          ).toLocal();
 
       final hour = date.hour == 0
           ? 12
@@ -177,9 +184,12 @@ class _ChatPageState extends State<ChatPage> {
               : date.hour;
 
       final minute =
-          date.minute.toString().padLeft(2, '0');
+          date.minute
+              .toString()
+              .padLeft(2, '0');
 
-      final period = date.hour >= 12 ? 'PM' : 'AM';
+      final period =
+          date.hour >= 12 ? 'PM' : 'AM';
 
       return '$hour:$minute $period';
     } catch (_) {
@@ -187,9 +197,16 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  bool _isMine(Map<String, dynamic> message) {
+  bool _isMine(
+    Map<String, dynamic> message,
+  ) {
     return message['sender_id'] ==
-        Supabase.instance.client.auth.currentUser?.id;
+        Supabase
+            .instance
+            .client
+            .auth
+            .currentUser
+            ?.id;
   }
 
   @override
@@ -219,13 +236,15 @@ class _ChatPageState extends State<ChatPage> {
             ),
             SizedBox(width: 10),
             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   'ZenexPay Support',
                   style: TextStyle(
                     fontSize: 17,
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                   ),
                 ),
                 Text(
@@ -247,30 +266,38 @@ class _ChatPageState extends State<ChatPage> {
                 : () async {
                     await _loadMessages();
                   },
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(
+              Icons.refresh,
+            ),
           ),
         ],
       ),
       body: loading
           ? const Center(
-              child: CircularProgressIndicator(),
+              child:
+                  CircularProgressIndicator(),
             )
           : Column(
               children: [
                 Container(
-                  margin: const EdgeInsets.fromLTRB(
+                  margin:
+                      const EdgeInsets.fromLTRB(
                     12,
                     12,
                     12,
                     4,
                   ),
-                  padding: const EdgeInsets.all(13),
+                  padding:
+                      const EdgeInsets.all(13),
                   decoration: BoxDecoration(
                     color: Theme.of(context)
                         .colorScheme
                         .primary
                         .withOpacity(.08),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius:
+                        BorderRadius.circular(
+                      16,
+                    ),
                   ),
                   child: const Row(
                     crossAxisAlignment:
@@ -293,27 +320,29 @@ class _ChatPageState extends State<ChatPage> {
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: messages.isEmpty
                       ? _emptyChat()
                       : ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.fromLTRB(
+                          controller:
+                              scrollController,
+                          padding:
+                              const EdgeInsets.fromLTRB(
                             14,
                             14,
                             14,
                             20,
                           ),
-                          itemCount: messages.length,
-                          itemBuilder: (_, index) {
+                          itemCount:
+                              messages.length,
+                          itemBuilder:
+                              (_, index) {
                             return _messageBubble(
                               messages[index],
                             );
                           },
                         ),
                 ),
-
                 _composer(),
               ],
             ),
@@ -323,14 +352,17 @@ class _ChatPageState extends State<ChatPage> {
   Widget _emptyChat() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(30),
+        padding:
+            const EdgeInsets.all(30),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
             Container(
               width: 76,
               height: 76,
-              decoration: BoxDecoration(
+              decoration:
+                  BoxDecoration(
                 shape: BoxShape.circle,
                 color: Theme.of(context)
                     .colorScheme
@@ -348,16 +380,19 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(height: 18),
             const Text(
               'Chat with ZenexPay Admin',
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w800,
+                fontWeight:
+                    FontWeight.w800,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Send your question or problem below. Admin can reply directly here.',
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: TextStyle(
                 color: Colors.grey,
                 height: 1.4,
@@ -381,16 +416,23 @@ class _ChatPageState extends State<ChatPage> {
       child: Container(
         constraints: BoxConstraints(
           maxWidth:
-              MediaQuery.sizeOf(context).width * .78,
+              MediaQuery.sizeOf(context)
+                  .width *
+              .78,
         ),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.fromLTRB(
+        margin:
+            const EdgeInsets.only(
+          bottom: 10,
+        ),
+        padding:
+            const EdgeInsets.fromLTRB(
           14,
           11,
           14,
           9,
         ),
-        decoration: BoxDecoration(
+        decoration:
+            BoxDecoration(
           color: mine
               ? Theme.of(context)
                   .colorScheme
@@ -398,31 +440,43 @@ class _ChatPageState extends State<ChatPage> {
               : Theme.of(context)
                   .colorScheme
                   .surfaceContainerHighest,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(
+          borderRadius:
+              BorderRadius.only(
+            topLeft:
+                const Radius.circular(
+              18,
+            ),
+            topRight:
+                const Radius.circular(
+              18,
+            ),
+            bottomLeft:
+                Radius.circular(
               mine ? 18 : 4,
             ),
-            bottomRight: Radius.circular(
+            bottomRight:
+                Radius.circular(
               mine ? 4 : 18,
             ),
           ),
         ),
         child: Column(
-          crossAxisAlignment: mine
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              mine
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
           children: [
             if (!mine)
               Padding(
-                padding: const EdgeInsets.only(
+                padding:
+                    const EdgeInsets.only(
                   bottom: 4,
                 ),
                 child: Text(
                   'ZenexPay Admin',
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                     fontSize: 12,
                     color: Theme.of(context)
                         .colorScheme
@@ -433,15 +487,18 @@ class _ChatPageState extends State<ChatPage> {
             Text(
               message['message'] ?? '',
               style: TextStyle(
-                color:
-                    mine ? Colors.white : null,
+                color: mine
+                    ? Colors.white
+                    : null,
                 fontSize: 15,
                 height: 1.35,
               ),
             ),
             const SizedBox(height: 5),
             Text(
-              _time(message['created_at']),
+              _time(
+                message['created_at'],
+              ),
               style: TextStyle(
                 fontSize: 10,
                 color: mine
@@ -459,17 +516,21 @@ class _ChatPageState extends State<ChatPage> {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(
+        padding:
+            const EdgeInsets.fromLTRB(
           10,
           8,
           10,
           8,
         ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+        decoration:
+            BoxDecoration(
+          color: Theme.of(context)
+              .scaffoldBackgroundColor,
           border: Border(
             top: BorderSide(
-              color: Colors.grey.withOpacity(.15),
+              color: Colors.grey
+                  .withOpacity(.15),
             ),
           ),
         ),
@@ -479,25 +540,35 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Expanded(
               child: TextField(
-                controller: messageController,
+                controller:
+                    messageController,
                 minLines: 1,
                 maxLines: 5,
                 textInputAction:
                     TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: 'Write a message...',
+                decoration:
+                    InputDecoration(
+                  hintText:
+                      'Write a message...',
                   filled: true,
-                  fillColor: Theme.of(context)
+                  fillColor: Theme.of(
+                    context,
+                  )
                       .colorScheme
                       .surfaceContainerHighest
                       .withOpacity(.55),
-                  border: OutlineInputBorder(
+                  border:
+                      OutlineInputBorder(
                     borderRadius:
-                        BorderRadius.circular(22),
-                    borderSide: BorderSide.none,
+                        BorderRadius.circular(
+                      22,
+                    ),
+                    borderSide:
+                        BorderSide.none,
                   ),
                   contentPadding:
-                      const EdgeInsets.symmetric(
+                      const EdgeInsets
+                          .symmetric(
                     horizontal: 17,
                     vertical: 12,
                   ),
@@ -514,11 +585,15 @@ class _ChatPageState extends State<ChatPage> {
               width: 48,
               height: 48,
               child: FilledButton(
-                onPressed:
-                    sending ? null : _sendMessage,
-                style: FilledButton.styleFrom(
-                  shape: const CircleBorder(),
-                  padding: EdgeInsets.zero,
+                onPressed: sending
+                    ? null
+                    : _sendMessage,
+                style:
+                    FilledButton.styleFrom(
+                  shape:
+                      const CircleBorder(),
+                  padding:
+                      EdgeInsets.zero,
                 ),
                 child: sending
                     ? const SizedBox(
