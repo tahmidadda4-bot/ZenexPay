@@ -19,6 +19,14 @@ jobs:
           version: latest
 
       - name: Deploy Edge Functions
-        run: supabase functions deploy --project-ref apzsfnehraiucfmhynff
+        run: |
+          if [ -d "supabase/functions" ]; then
+            supabase functions deploy --project-ref apzsfnehraiucfmhynff
+          elif [ -d "mobile/supabase/functions" ]; then
+            cd mobile && supabase functions deploy --project-ref apzsfnehraiucfmhynff
+          else
+            echo "supabase/functions directory not found!"
+            exit 1
+          fi
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
