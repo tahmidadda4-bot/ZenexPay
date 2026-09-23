@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -7,22 +5,32 @@ class SupabaseService {
 
   static String get uid {
     final user = client.auth.currentUser;
+
     if (user == null) {
       throw Exception('Not authenticated');
     }
+
     return user.id;
   }
 
+  // =========================================================
+  // WALLET
+  // =========================================================
+
   static Future<Map<String, dynamic>?> wallet() async {
-    return client
+    return await client
         .from('wallets')
         .select()
         .eq('user_id', uid)
         .maybeSingle();
   }
 
+  // =========================================================
+  // TASKS
+  // =========================================================
+
   static Future<List<Map<String, dynamic>>> tasks() async {
-    final rows = await client
+    final data = await client
         .from('tasks')
         .select(
           'id,title,description,instructions,reward,proof_required',
@@ -30,53 +38,44 @@ class SupabaseService {
         .eq('status', 'published')
         .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(rows);
+    return List<Map<String, dynamic>>.from(data);
   }
 
+  // =========================================================
+  // SUBMISSIONS
+  // =========================================================
+
   static Future<List<Map<String, dynamic>>> submissions() async {
-    final rows = await client
+    final data = await client
         .from('task_submissions')
         .select(
-          'id,task_id,status,proof_text,admin_note,rejection_reason,'
-          'screenshot_reason,screenshot_path,created_at,'
-          'screenshot_submitted_at,tasks(title,reward)',
+          'id,task_id,status,proof_text,admin_note,created_at,tasks(title,reward)',
         )
         .eq('user_id', uid)
         .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(rows);
+    return List<Map<String, dynamic>>.from(data);
   }
 
+  // =========================================================
+  // TRANSACTIONS
+  // =========================================================
+
   static Future<List<Map<String, dynamic>>> transactions() async {
-    final rows = await client
+    final data = await client
         .from('transactions')
-        .select('id,type,amount,description,created_at')
+        .select(
+          'id,type,amount,description,created_at',
+        )
         .eq('user_id', uid)
         .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(rows);
+    return List<Map<String, dynamic>>.from(data);
   }
 
-  static Future<List<Map<String, dynamic>>> notifications({
-    int limit = 30,
-  }) async {
-    final rows = await client
-        .from('notifications')
-        .select('id,title,message,type,is_read,created_at')
-        .eq('user_id', uid)
-        .order('created_at', ascending: false)
-        .limit(limit);
-
-    return List<Map<String, dynamic>>.from(rows);
-  }
-
-  static Future<void> markNotificationsRead() async {
-    await client
-        .from('notifications')
-        .update({'is_read': true})
-        .eq('user_id', uid)
-        .eq('is_read', false);
-  }
+  // =========================================================
+  // SUBMIT TASK
+  // =========================================================
 
   static Future<void> submitTask({
     required String taskId,
@@ -91,49 +90,9 @@ class SupabaseService {
     );
   }
 
-  static Future<void> uploadScreenshot({
-    required String submissionId,
-    required File file,
-  }) async {
-    final extension = file.path.split('.').last.toLowerCase();
-    const allowed = {'jpg', 'jpeg', 'png', 'webp'};
-
-    if (!allowed.contains(extension)) {
-      throw Exception('Only JPG, PNG or WEBP screenshots are allowed.');
-    }
-
-    final bytes = await file.length();
-    if (bytes > 5 * 1024 * 1024) {
-      throw Exception('Screenshot must be 5 MB or smaller.');
-    }
-
-    final path =
-        '$uid/$submissionId-${DateTime.now().millisecondsSinceEpoch}.$extension';
-
-    await client.storage.from('task-submissions').upload(
-      path,
-      file,
-      fileOptions: FileOptions(
-        upsert: false,
-        contentType: _contentType(extension),
-      ),
-    );
-
-    try {
-      await client.rpc(
-        'submit_screenshot',
-        params: {
-          'p_submission_id': submissionId,
-          'p_storage_path': path,
-        },
-      );
-    } catch (e) {
-      try {
-        await client.storage.from('task-submissions').remove([path]);
-      } catch (_) {}
-      rethrow;
-    }
-  }
+  // =========================================================
+  // WITHDRAW
+  // =========================================================
 
   static Future<String> withdraw({
     required double amount,
@@ -148,167 +107,128 @@ class SupabaseService {
         'p_account_number': account,
       },
     );
-    return '$result';
+
+    return result.toString();
   }
 
-  static String _contentType(String extension) {
-    switch (extension) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'webp':
-        return 'image/webp';
-      default:
-        return 'image/png';
+  // =========================================================
+  // CHAT
+  // =========================================================
+
+  static Future<String> getOrCreateSupportChat() async {
+    final result = await client.rpc(
+      'get_or_create_support_chat',
+    );
+
+    if (result == null) {
+      throw Exception('Could not create support chat.');
     }
+
+    return result.toString();
   }
 
-  static Future<UserAnalytics> analytics() => _buildAnalytics();
-  static Future<ReferralInfo> referralInfo() => _getReferralInfo();
-  static Future<void> claimReferral(String code) => _claimReferral(code);
-}
+  // =========================================================
+  // GET CHAT INFO
+  // =========================================================
 
-class DailyPoint {
-  final String label;
-  final double amount;
-  const DailyPoint(this.label, this.amount);
-}
+  static Future<Map<String, dynamic>?> getMySupportChat() async {
+    final data = await client.rpc(
+      'get_my_support_chat',
+    );
 
-class UserAnalytics {
-  final double balance;
-  final double totalEarned;
-  final double totalWithdrawn;
-  final double monthEarned;
-  final int approved;
-  final int pending;
-  final int rejected;
-  final int screenshotSubmitted;
-  final int streak;
-  final List<DailyPoint> last7Days;
-
-  const UserAnalytics({
-    required this.balance,
-    required this.totalEarned,
-    required this.totalWithdrawn,
-    required this.monthEarned,
-    required this.approved,
-    required this.pending,
-    required this.rejected,
-    required this.screenshotSubmitted,
-    required this.streak,
-    required this.last7Days,
-  });
-}
-
-class ReferralInfo {
-  final String code;
-  final int successfulReferrals;
-  const ReferralInfo({required this.code, required this.successfulReferrals});
-}
-
-extension ZenexPayAnalytics on SupabaseService {
-  // This extension exists only to keep the original service class readable.
-}
-
-Future<UserAnalytics> _buildAnalytics() async {
-  final wallet = await SupabaseService.wallet();
-  final submissions = await SupabaseService.submissions();
-  final transactions = await SupabaseService.transactions();
-
-  double number(dynamic value) => double.tryParse('$value') ?? 0;
-  final totalEarned = number(wallet?['total_earned']);
-  final totalWithdrawn = number(wallet?['total_withdrawn']);
-  final balance = number(wallet?['balance']);
-
-  int approved = 0, pending = 0, rejected = 0, screenshotSubmitted = 0;
-  for (final row in submissions) {
-    switch ('${row['status'] ?? ''}') {
-      case 'approved': approved++; break;
-      case 'rejected': rejected++; break;
-      case 'screenshot_submitted': screenshotSubmitted++; break;
-      default: pending++; break;
+    if (data == null) {
+      return null;
     }
-  }
 
-  final now = DateTime.now();
-  final monthStart = DateTime(now.year, now.month, 1);
-  double monthEarned = 0;
-  final daily = <DateTime, double>{};
-  for (var i = 0; i < 7; i++) {
-    final d = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - i));
-    daily[d] = 0;
-  }
-
-  final activeDates = <DateTime>{};
-  for (final tx in transactions) {
-    final date = DateTime.tryParse('${tx['created_at'] ?? ''}')?.toLocal();
-    if (date == null) continue;
-    final amount = number(tx['amount']);
-    final type = '${tx['type'] ?? ''}'.toLowerCase();
-    if (type == 'task_reward' || type.contains('earning') || type == 'reward') {
-      if (!date.isBefore(monthStart)) monthEarned += amount;
-      final day = DateTime(date.year, date.month, date.day);
-      activeDates.add(day);
-      final today = DateTime(now.year, now.month, now.day);
-      final diff = today.difference(day).inDays;
-      if (diff >= 0 && diff < 7) {
-        final key = today.subtract(Duration(days: diff));
-        daily[key] = (daily[key] ?? 0) + amount;
-      }
+    if (data is List && data.isNotEmpty) {
+      return Map<String, dynamic>.from(data.first);
     }
+
+    return null;
   }
 
-  // Approved submission dates also count as activity, even if an older
-  // transaction type is not named task_reward in a legacy database.
-  for (final row in submissions) {
-    if ('${row['status'] ?? ''}' != 'approved') continue;
-    final date = DateTime.tryParse('${row['created_at'] ?? ''}')?.toLocal();
-    if (date == null) continue;
-    activeDates.add(DateTime(date.year, date.month, date.day));
+  // =========================================================
+  // GET CHAT MESSAGES
+  // =========================================================
+
+  static Future<List<Map<String, dynamic>>> supportMessages(
+    String conversationId,
+  ) async {
+    final data = await client
+        .from('support_messages')
+        .select(
+          'id,conversation_id,sender_id,sender_type,message,is_read,created_at',
+        )
+        .eq('conversation_id', conversationId)
+        .order('created_at', ascending: true);
+
+    return List<Map<String, dynamic>>.from(data);
   }
 
-  var streak = 0;
-  var cursor = DateTime(now.year, now.month, now.day);
-  while (activeDates.contains(cursor)) {
-    streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
+  // =========================================================
+  // SEND CHAT MESSAGE
+  // =========================================================
+
+  static Future<String> sendSupportMessage({
+    required String conversationId,
+    required String message,
+  }) async {
+    final text = message.trim();
+
+    if (text.isEmpty) {
+      throw Exception('Message cannot be empty.');
+    }
+
+    final result = await client.rpc(
+      'send_support_message',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_message': text,
+      },
+    );
+
+    if (result == null) {
+      throw Exception('Message could not be sent.');
+    }
+
+    return result.toString();
   }
 
-  final points = daily.entries.map((e) {
-    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return DailyPoint(names[e.key.weekday - 1], e.value);
-  }).toList();
+  // =========================================================
+  // MARK CHAT READ
+  // =========================================================
 
-  return UserAnalytics(
-    balance: balance,
-    totalEarned: totalEarned,
-    totalWithdrawn: totalWithdrawn,
-    monthEarned: monthEarned,
-    approved: approved,
-    pending: pending,
-    rejected: rejected,
-    screenshotSubmitted: screenshotSubmitted,
-    streak: streak,
-    last7Days: points,
-  );
+  static Future<void> markSupportMessagesRead(
+    String conversationId,
+  ) async {
+    await client.rpc(
+      'mark_support_messages_read',
+      params: {
+        'p_conversation_id': conversationId,
+      },
+    );
+  }
+
+  // =========================================================
+  // REALTIME CHAT CHANNEL
+  // =========================================================
+
+  static RealtimeChannel supportChatChannel(
+    String conversationId,
+  ) {
+    return client
+        .channel('support-chat-$conversationId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'support_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {},
+        )
+        .subscribe();
+  }
 }
-
-Future<ReferralInfo> _getReferralInfo() async {
-  final result = await SupabaseService.client.rpc('get_or_create_referral_code');
-  final row = result is Map ? Map<String, dynamic>.from(result) : <String, dynamic>{};
-  return ReferralInfo(
-    code: '${row['code'] ?? ''}',
-    successfulReferrals: int.tryParse('${row['successful_referrals'] ?? 0}') ?? 0,
-  );
-}
-
-Future<void> _claimReferral(String code) async {
-  await SupabaseService.client.rpc('claim_referral_code', params: {'p_code': code});
-}
-
-String money(dynamic value) {
-  final n = double.tryParse('$value') ?? 0;
-  return n.toStringAsFixed(2);
-}
-
-// Top-level helper methods are attached through static forwarding below.
