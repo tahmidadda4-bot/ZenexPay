@@ -1,9 +1,8 @@
-Name: ZenexPay Android APK
+
+name: ZenexPay Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   build:
