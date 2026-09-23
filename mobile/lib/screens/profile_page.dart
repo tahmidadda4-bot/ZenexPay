@@ -6,6 +6,7 @@ import 'analytics_page.dart';
 import 'achievements_page.dart';
 import 'referral_page.dart';
 import 'chat_page.dart';
+import 'security_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
