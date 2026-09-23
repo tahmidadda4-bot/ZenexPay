@@ -14,34 +14,58 @@ class ProfilePage extends StatelessWidget {
   void _openChat(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ChatPage()),
+      MaterialPageRoute(
+        builder: (_) => const ChatPage(),
+      ),
+    );
+  }
+
+  void _openSecurity(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SecurityPage(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+
     final name =
         (user?.userMetadata?['full_name'] as String?)?.trim() ?? '';
+
     final email = user?.email ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Profile',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          30,
+        ),
         children: [
+          // Profile header
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF155EEF), Color(0xFF7C3AED)],
+                colors: [
+                  Color(0xFF155EEF),
+                  Color(0xFF7C3AED),
+                ],
               ),
               borderRadius: BorderRadius.circular(26),
             ),
@@ -79,7 +103,9 @@ class ProfilePage extends StatelessWidget {
                         email,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -87,8 +113,10 @@ class ProfilePage extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 16),
 
+          // Main profile options
           Card(
             child: Column(
               children: [
@@ -98,58 +126,84 @@ class ProfilePage extends StatelessWidget {
                   ),
                   title: const Text(
                     'Earnings analytics',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   subtitle: const Text(
                     'Charts, earnings and task performance',
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AnalyticsPage(),
-                    ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
                   ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AnalyticsPage(),
+                      ),
+                    );
+                  },
                 ),
+
                 const Divider(height: 1),
+
                 ListTile(
                   leading: const CircleAvatar(
-                    child: Icon(Icons.workspace_premium_rounded),
+                    child: Icon(
+                      Icons.workspace_premium_rounded,
+                    ),
                   ),
                   title: const Text(
                     'Level & achievements',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   subtitle: const Text(
                     'Unlock milestones from approved work',
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AchievementsPage(),
-                    ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
                   ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AchievementsPage(),
+                      ),
+                    );
+                  },
                 ),
+
                 const Divider(height: 1),
+
                 ListTile(
                   leading: const CircleAvatar(
-                    child: Icon(Icons.people_alt_rounded),
+                    child: Icon(
+                      Icons.people_alt_rounded,
+                    ),
                   ),
                   title: const Text(
                     'Referral center',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   subtitle: const Text(
                     'Share your code and track referrals',
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ReferralPage(),
-                    ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
                   ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ReferralPage(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -157,6 +211,7 @@ class ProfilePage extends StatelessWidget {
 
           const SizedBox(height: 14),
 
+          // Settings and security
           Card(
             child: Column(
               children: [
@@ -165,69 +220,91 @@ class ProfilePage extends StatelessWidget {
                   builder: (_, mode, __) {
                     return SwitchListTile.adaptive(
                       secondary: const CircleAvatar(
-                        child: Icon(Icons.dark_mode_outlined),
+                        child: Icon(
+                          Icons.dark_mode_outlined,
+                        ),
                       ),
                       title: const Text(
                         'Dark mode',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       subtitle: const Text(
                         'Switch the premium interface theme',
                       ),
                       value: mode == ThemeMode.dark,
-                      onChanged: (v) {
-                        themeModeNotifier.value =
-                            v ? ThemeMode.dark : ThemeMode.light;
+                      onChanged: (value) {
+                        themeModeNotifier.value = value
+                            ? ThemeMode.dark
+                            : ThemeMode.light;
                       },
                     );
                   },
                 ),
+
                 const Divider(height: 1),
 
                 ListTile(
                   leading: const CircleAvatar(
-                    child: Icon(Icons.support_agent_rounded),
+                    child: Icon(
+                      Icons.support_agent_rounded,
+                    ),
                   ),
                   title: const Text(
                     'Chat with Admin',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   subtitle: const Text(
                     'Ask about tasks, proof, wallet or withdrawals',
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                  ),
                   onTap: () => _openChat(context),
                 ),
+
                 const Divider(height: 1),
 
                 ListTile(
-  leading: const CircleAvatar(
-    child: Icon(Icons.security_outlined),
-  ),
-  title: const Text(
-    'Account security',
-    style: TextStyle(fontWeight: FontWeight.w800),
-  ),
-  subtitle: const Text(
-    'Password and account security',
-  ),
-  trailing: const Icon(Icons.chevron_right_rounded),
-  onTap: () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const SecurityPage(),
-    ),
-  ),
-),
+                  leading: const CircleAvatar(
+                    child: Icon(
+                      Icons.security_outlined,
+                    ),
+                  ),
+                  title: const Text(
+                    'Account security',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Password and account security',
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                  ),
+                  onTap: () => _openSecurity(context),
+                ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 18),
 
+          // Sign out
           OutlinedButton.icon(
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
             },
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign out'),
+            icon: const Icon(
+              Icons.logout_rounded,
+            ),
+            label: const Text(
+              'Sign out',
+            ),
           ),
         ],
       ),
