@@ -14,6 +14,8 @@ import 'screens/notifications_page.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
 import 'theme_controller.dart';
+import 'screens/reset_password_page.dart'; 
+// (যদি ফাইলটি screens ফোল্ডারে থাকে, তবে উপরের পাথটি দিন)
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
