@@ -1,503 +1,865 @@
-import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { createClient } from '@supabase/supabase-js';
-import './style.css';
+import React, { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { createClient } from "@supabase/supabase-js";
+import "./style.css";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-const money = (v) => `৳ ${Number(v || 0).toFixed(2)}`;
+const VERSION = "ZenexPay Admin v2.1";
 
-/* =========================
-   LOGIN
-========================= */
+const money = (value) => {
+  const number = Number(value || 0);
+  return `৳ ${number.toFixed(2)}`;
+};
 
-function Login({ onLogin }) {
-  const [busy, setBusy] = useState(false);
+const formatDate = (value) => {
+  if (!value) return "-";
 
-  async function submit(e) {
-    e.preventDefault();
-    setBusy(true);
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return String(value);
+  }
+};
 
-    const f = new FormData(e.currentTarget);
+async function fetchTable(table) {
+  const { data, error } = await supabase
+    .from(table)
+    .select("*");
 
-    const { data, error } =
-      await supabase.auth.signInWithPassword({
-        email: f.get('email'),
-        password: f.get('password'),
-      });
-
-    setBusy(false);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    onLogin(data.session);
+  if (error) {
+    throw new Error(`${table}: ${error.message}`);
   }
 
-  return (
-    <main className="login">
-      <form
-        onSubmit={submit}
-        className="panel login-card"
-      >
-        <div className="brand">💰</div>
-
-        <h1>ZenexPay Admin</h1>
-
-        <p>Secure management dashboard</p>
-
-        <input
-          name="email"
-          type="email"
-          placeholder="Admin email"
-          required
-        />
-
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          required
-        />
-
-        <button disabled={busy}>
-          {busy
-            ? 'Signing in...'
-            : 'Sign in'}
-        </button>
-
-        <small>
-          Only users with the Supabase admin role
-          can manage protected data.
-        </small>
-      </form>
-    </main>
-  );
+  return data || [];
 }
-
-/* =========================
-   MAIN APP
-========================= */
 
 function App() {
   const [session, setSession] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  const [tab, setTab] =
-    useState('dashboard');
+  const [refreshing, setRefreshing] = useState(false);
+  const [savingTask, setSavingTask] = useState(false);
 
-  const [refreshing, setRefreshing] =
-    useState(false);
+  const [users, setUsers] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [transactions, setTransactions] = useState([]);
 
-  const [data, setData] = useState({
-    users: [],
-    tasks: [],
-    subs: [],
-    withdrawals: [],
-  });
-
-  const [stats, setStats] =
-    useState({});
-
-  /* -------------------------
-     SESSION
-  ------------------------- */
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskReward, setTaskReward] = useState("");
+  const [taskType, setTaskType] = useState("general");
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        setSession(data.session);
-      });
-  }, []);
+    checkSession();
 
-  /* -------------------------
-     LOAD DATA
-  ------------------------- */
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (session) {
-      load();
+      loadData();
     }
   }, [session]);
 
-  async function load() {
-    if (refreshing) return;
+  async function checkSession() {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setSession(session);
+    } catch (error) {
+      console.error("Session error:", error);
+    } finally {
+      setCheckingSession(false);
+    }
+  }
+
+  async function login(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      alert(`Login failed:\n\n${error.message}`);
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+
+    setSession(null);
+    setUsers([]);
+    setTasks([]);
+    setSubmissions([]);
+    setWithdrawals([]);
+    setTransactions([]);
+  }
+
+  async function loadData() {
+    if (!session) return;
 
     setRefreshing(true);
 
+    const errors = [];
+
     try {
-      async function q(
-        table,
-        select = '*'
-      ) {
-        const {
-          data,
-          error,
-        } = await supabase
-          .from(table)
-          .select(select)
-          .order(
-            'created_at',
-            {
-              ascending: false,
-            }
-          )
-          .limit(100);
+      const data = await fetchTable("profiles");
+      setUsers(data);
+    } catch (error) {
+      console.error(error);
+      errors.push(`Users → ${error.message}`);
+    }
 
-        if (error) {
-          console.error(
-            `${table} error:`,
-            error
-          );
+    try {
+      const data = await fetchTable("tasks");
+      setTasks(data);
+    } catch (error) {
+      console.error(error);
+      errors.push(`Tasks → ${error.message}`);
+    }
 
-          throw error;
-        }
+    try {
+      const data = await fetchTable("task_submissions");
+      setSubmissions(data);
+    } catch (error) {
+      console.error(error);
+      errors.push(`Submissions → ${error.message}`);
+    }
 
-        return data || [];
+    try {
+      const data = await fetchTable("withdrawals");
+      setWithdrawals(data);
+    } catch (error) {
+      console.error(error);
+      errors.push(`Withdrawals → ${error.message}`);
+    }
+
+    try {
+      const data = await fetchTable("transactions");
+      setTransactions(data);
+    } catch (error) {
+      console.error(error);
+      errors.push(`Transactions → ${error.message}`);
+    }
+
+    setRefreshing(false);
+
+    if (errors.length > 0) {
+      alert(
+        "Refresh finished with errors:\n\n" +
+          errors.join("\n\n")
+      );
+    }
+  }
+
+  async function addTask() {
+    const title = taskTitle.trim();
+    const description = taskDescription.trim();
+    const reward = Number(taskReward);
+
+    if (!title) {
+      alert("Task title is required.");
+      return;
+    }
+
+    if (!Number.isFinite(reward) || reward <= 0) {
+      alert("Enter a valid task reward.");
+      return;
+    }
+
+    setSavingTask(true);
+
+    try {
+      const payload = {
+        title,
+        description,
+        reward,
+        type: taskType,
+      };
+
+      const { error } = await supabase
+        .from("tasks")
+        .insert(payload);
+
+      if (error) {
+        throw error;
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * profiles table does NOT currently
-       * contain an email column.
-       *
-       * So we use the actual columns:
-       * id
-       * full_name
-       * phone
-       * status
-       * created_at
-       */
+      alert("Task added successfully.");
 
-      const [
-        users,
-        tasks,
-        subs,
-        withdrawals,
-      ] = await Promise.all([
-        q(
-          'profiles',
-          'id,full_name,phone,status,created_at'
-        ),
+      setTaskTitle("");
+      setTaskDescription("");
+      setTaskReward("");
+      setTaskType("general");
 
-        q('tasks'),
-
-        q(
-          'task_submissions',
-          'id,task_id,user_id,status,proof_text,admin_note,created_at'
-        ),
-
-        q(
-          'withdrawals',
-          'id,user_id,amount,method,account_number,status,admin_note,created_at'
-        ),
-      ]);
-
-      setData({
-        users,
-        tasks,
-        subs,
-        withdrawals,
-      });
-
-      setStats({
-        users: users.length,
-
-        tasks: tasks.length,
-
-        pendingSubs:
-          subs.filter(
-            x =>
-              x.status ===
-              'pending'
-          ).length,
-
-        pendingWithdrawals:
-          withdrawals.filter(
-            x =>
-              x.status ===
-              'pending'
-          ).length,
-      });
-
+      await loadData();
     } catch (error) {
-      console.error(
-        'Refresh error:',
-        error
-      );
+      console.error("Add task error:", error);
 
       alert(
-        `Refresh failed: ${
+        "Add Task failed:\n\n" +
           error.message
-        }`
       );
-
     } finally {
-      setRefreshing(false);
+      setSavingTask(false);
     }
   }
 
-  /* =========================
-     APPROVE SUBMISSION
-  ========================= */
+  async function approveSubmission(id) {
+    if (!id) return;
 
-  async function approve(id) {
-    const { error } =
-      await supabase.rpc(
-        'approve_submission',
-        {
-          p_submission_id: id,
-        }
+    const confirmed = window.confirm(
+      "Are you sure you want to approve this submission?"
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase.rpc(
+      "approve_submission",
+      {
+        p_submission_id: id,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+
+      alert(
+        "Approve failed:\n\n" +
+          error.message
       );
 
-    if (error) {
-      alert(error.message);
       return;
     }
 
-    await load();
+    alert("Submission approved.");
+
+    await loadData();
   }
 
-  /* =========================
-     REJECT SUBMISSION
-  ========================= */
+  async function rejectSubmission(id) {
+    if (!id) return;
 
-  async function reject(id) {
-    const note =
-      prompt(
-        'Reason (optional):'
-      ) || null;
+    const reason = window.prompt(
+      "Enter rejection reason:"
+    );
 
-    /*
-     * Current database does not have
-     * reject_submission RPC.
-     *
-     * Therefore update directly.
-     */
-
-    const { error } =
-      await supabase
-        .from('task_submissions')
-        .update({
-          status: 'rejected',
-          admin_note: note,
-        })
-        .eq('id', id);
-
-    if (error) {
-      alert(error.message);
+    if (reason === null) {
       return;
     }
 
-    await load();
-  }
+    const { error } = await supabase
+      .from("task_submissions")
+      .update({
+        status: "rejected",
+        rejection_reason: reason.trim(),
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: session.user.id,
+      })
+      .eq("id", id);
 
-  /* =========================
-     WITHDRAWAL PROCESS
-  ========================= */
+    if (error) {
+      console.error(error);
 
-  async function process(
-    id,
-    status
-  ) {
-    const note =
-      prompt(
-        'Admin note (optional):'
-      ) || null;
-
-    /*
-     * Current RPC:
-     *
-     * process_withdrawal(
-     *   p_withdrawal_id,
-     *   p_status,
-     *   p_note
-     * )
-     */
-
-    const { error } =
-      await supabase.rpc(
-        'process_withdrawal',
-        {
-          p_withdrawal_id: id,
-          p_status: status,
-          p_note: note,
-        }
+      alert(
+        "Reject failed:\n\n" +
+          error.message
       );
 
-    if (error) {
-      alert(error.message);
       return;
     }
 
-    await load();
+    alert("Submission rejected.");
+
+    await loadData();
   }
 
-  /* =========================
-     LOGIN SCREEN
-  ========================= */
+  async function processWithdrawal(id, status) {
+    if (!id) return;
 
-  if (!session) {
+    const action =
+      status === "approved"
+        ? "approve"
+        : "reject";
+
+    const confirmed = window.confirm(
+      `Are you sure you want to ${action} this withdrawal?`
+    );
+
+    if (!confirmed) return;
+
+    const note =
+      window.prompt(
+        "Admin note (optional):"
+      ) || "";
+
+    const { error } = await supabase.rpc(
+      "process_withdrawal",
+      {
+        p_withdrawal_id: id,
+        p_status: status,
+        p_note: note,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+
+      alert(
+        "Withdrawal update failed:\n\n" +
+          error.message
+      );
+
+      return;
+    }
+
+    alert(
+      status === "approved"
+        ? "Withdrawal approved."
+        : "Withdrawal rejected."
+    );
+
+    await loadData();
+  }
+
+  if (checkingSession) {
     return (
-      <Login
-        onLogin={setSession}
-      />
+      <div className="app">
+        <div className="card">
+          <h2>Loading...</h2>
+        </div>
+      </div>
     );
   }
 
-  /* =========================
-     NAVIGATION
-  ========================= */
-
-  const nav = [
-    [
-      'dashboard',
-      'Dashboard',
-    ],
-    [
-      'users',
-      'Users',
-    ],
-    [
-      'tasks',
-      'Tasks',
-    ],
-    [
-      'subs',
-      'Submissions',
-    ],
-    [
-      'withdrawals',
-      'Withdrawals',
-    ],
-  ];
+  if (!session) {
+    return <Login onLogin={login} />;
+  }
 
   return (
     <div className="app">
 
-      {/* SIDEBAR */}
+      <header className="topbar">
 
-      <aside>
-
-        <div className="logo">
-          💰
-          <span>
-            ZenexPay
-          </span>
+        <div>
+          <h1>ZenexPay Admin</h1>
+          <p>{VERSION}</p>
         </div>
 
-        {nav.map(
-          ([key, label]) => (
-            <button
-              key={key}
-              className={
-                tab === key
-                  ? 'active'
-                  : ''
-              }
-              onClick={() =>
-                setTab(key)
-              }
-            >
-              {label}
-            </button>
-          )
-        )}
-
-        <button
-          className="logout"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            setSession(null);
-          }}
-        >
-          Logout
-        </button>
-
-      </aside>
-
-      {/* CONTENT */}
-
-      <main className="content">
-
-        <header>
-
-          <div>
-            <h1>
-              {
-                nav.find(
-                  x =>
-                    x[0] === tab
-                )?.[1]
-              }
-            </h1>
-
-            <p>
-              ZenexPay management
-              panel
-            </p>
-          </div>
+        <div className="top-actions">
 
           <button
-            onClick={load}
+            onClick={loadData}
             disabled={refreshing}
           >
             {refreshing
-              ? 'Refreshing...'
-              : 'Refresh'}
+              ? "Refreshing..."
+              : "Refresh"}
           </button>
 
-        </header>
+          <button onClick={logout}>
+            Logout
+          </button>
 
-        {tab ===
-          'dashboard' && (
-          <Dashboard
-            stats={stats}
-            data={data}
-          />
-        )}
+        </div>
 
-        {tab === 'users' && (
-          <Table
-            title="Users"
-            rows={data.users}
-            cols={[
-              'full_name',
-              'phone',
-              'status',
-              'created_at',
-            ]}
-          />
-        )}
+      </header>
 
-        {tab === 'tasks' && (
-          <Tasks
-            tasks={data.tasks}
-            onRefresh={load}
-          />
-        )}
+      <main className="container">
 
-        {tab === 'subs' && (
-          <Submissions
-            rows={data.subs}
-            onApprove={approve}
-            onReject={reject}
-          />
-        )}
+        {/* STATS */}
 
-        {tab ===
-          'withdrawals' && (
-          <Withdrawals
-            rows={data.withdrawals}
-            onProcess={process}
-          />
-        )}
+        <section className="stats">
+
+          <div className="card">
+            <h3>Users</h3>
+            <strong>{users.length}</strong>
+          </div>
+
+          <div className="card">
+            <h3>Tasks</h3>
+            <strong>{tasks.length}</strong>
+          </div>
+
+          <div className="card">
+            <h3>Submissions</h3>
+            <strong>{submissions.length}</strong>
+          </div>
+
+          <div className="card">
+            <h3>Withdrawals</h3>
+            <strong>{withdrawals.length}</strong>
+          </div>
+
+        </section>
+
+        {/* ADD TASK */}
+
+        <section className="card">
+
+          <h2>Add Task</h2>
+
+          <div className="form-grid">
+
+            <input
+              value={taskTitle}
+              onChange={(e) =>
+                setTaskTitle(e.target.value)
+              }
+              placeholder="Task title"
+            />
+
+            <input
+              value={taskDescription}
+              onChange={(e) =>
+                setTaskDescription(e.target.value)
+              }
+              placeholder="Task description"
+            />
+
+            <input
+              value={taskReward}
+              onChange={(e) =>
+                setTaskReward(e.target.value)
+              }
+              placeholder="Reward"
+              type="number"
+              min="0"
+              step="0.01"
+            />
+
+            <select
+              value={taskType}
+              onChange={(e) =>
+                setTaskType(e.target.value)
+              }
+            >
+              <option value="general">
+                General
+              </option>
+
+              <option value="video">
+                Video
+              </option>
+
+              <option value="social">
+                Social
+              </option>
+
+              <option value="app">
+                App
+              </option>
+
+              <option value="survey">
+                Survey
+              </option>
+            </select>
+
+            <button
+              onClick={addTask}
+              disabled={savingTask}
+            >
+              {savingTask
+                ? "Saving..."
+                : "Add Task"}
+            </button>
+
+          </div>
+
+        </section>
+
+        {/* TASKS */}
+
+        <section className="card">
+
+          <h2>Tasks</h2>
+
+          {tasks.length === 0 ? (
+            <p>No tasks found.</p>
+          ) : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Reward</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {tasks.map((task) => (
+
+                    <tr key={task.id}>
+
+                      <td>
+                        {task.title || "-"}
+                      </td>
+
+                      <td>
+                        {task.type || "-"}
+                      </td>
+
+                      <td>
+                        {money(task.reward)}
+                      </td>
+
+                      <td>
+                        {task.status || "-"}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
+
+        {/* SUBMISSIONS */}
+
+        <section className="card">
+
+          <h2>Submissions</h2>
+
+          {submissions.length === 0 ? (
+            <p>No submissions found.</p>
+          ) : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Task</th>
+                    <th>Proof</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {submissions.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>
+                        {item.user_id || "-"}
+                      </td>
+
+                      <td>
+                        {item.task_id || "-"}
+                      </td>
+
+                      <td>
+                        {item.proof_text || "-"}
+                      </td>
+
+                      <td>
+                        {item.status || "-"}
+                      </td>
+
+                      <td>
+
+                        {item.status === "pending" && (
+
+                          <>
+
+                            <button
+                              onClick={() =>
+                                approveSubmission(
+                                  item.id
+                                )
+                              }
+                            >
+                              Approve
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                rejectSubmission(
+                                  item.id
+                                )
+                              }
+                            >
+                              Reject
+                            </button>
+
+                          </>
+
+                        )}
+
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
+
+        {/* WITHDRAWALS */}
+
+        <section className="card">
+
+          <h2>Withdrawals</h2>
+
+          {withdrawals.length === 0 ? (
+            <p>No withdrawals found.</p>
+          ) : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Account</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {withdrawals.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>
+                        {item.user_id || "-"}
+                      </td>
+
+                      <td>
+                        {money(item.amount)}
+                      </td>
+
+                      <td>
+                        {item.method || "-"}
+                      </td>
+
+                      <td>
+                        {item.account_number || "-"}
+                      </td>
+
+                      <td>
+                        {item.status || "-"}
+                      </td>
+
+                      <td>
+
+                        {item.status === "pending" && (
+
+                          <>
+
+                            <button
+                              onClick={() =>
+                                processWithdrawal(
+                                  item.id,
+                                  "approved"
+                                )
+                              }
+                            >
+                              Approve
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                processWithdrawal(
+                                  item.id,
+                                  "rejected"
+                                )
+                              }
+                            >
+                              Reject
+                            </button>
+
+                          </>
+
+                        )}
+
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
+
+        {/* USERS */}
+
+        <section className="card">
+
+          <h2>Users</h2>
+
+          {users.length === 0 ? (
+            <p>No users found.</p>
+          ) : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {users.map((user) => (
+
+                    <tr key={user.id}>
+
+                      <td>
+                        {user.full_name || "-"}
+                      </td>
+
+                      <td>
+                        {user.phone || "-"}
+                      </td>
+
+                      <td>
+                        {user.status || "-"}
+                      </td>
+
+                      <td>
+                        {formatDate(
+                          user.created_at
+                        )}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
+
+        {/* TRANSACTIONS */}
+
+        <section className="card">
+
+          <h2>Transactions</h2>
+
+          {transactions.length === 0 ? (
+            <p>No transactions found.</p>
+          ) : (
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {transactions.map((item) => (
+
+                    <tr key={item.id}>
+
+                      <td>
+                        {item.user_id || "-"}
+                      </td>
+
+                      <td>
+                        {money(item.amount)}
+                      </td>
+
+                      <td>
+                        {item.type || "-"}
+                      </td>
+
+                      <td>
+                        {item.status || "-"}
+                      </td>
+
+                      <td>
+                        {formatDate(
+                          item.created_at
+                        )}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
 
       </main>
 
@@ -505,646 +867,78 @@ function App() {
   );
 }
 
-/* =========================
-   DASHBOARD
-========================= */
+function Login({ onLogin }) {
 
-function Dashboard({
-  stats,
-  data,
-}) {
-  return (
-    <section>
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
-      <div className="cards">
+  async function submit(e) {
 
-        {[
-          [
-            'Users',
-            stats.users,
-          ],
-
-          [
-            'Tasks',
-            stats.tasks,
-          ],
-
-          [
-            'Pending submissions',
-            stats.pendingSubs,
-          ],
-
-          [
-            'Pending withdrawals',
-            stats.pendingWithdrawals,
-          ],
-        ].map(
-          ([title, value]) => (
-            <div
-              className="panel stat"
-              key={title}
-            >
-              <span>
-                {title}
-              </span>
-
-              <strong>
-                {value || 0}
-              </strong>
-            </div>
-          )
-        )}
-
-      </div>
-
-      <div className="grid2">
-
-        {/* WITHDRAWALS */}
-
-        <div className="panel">
-
-          <h2>
-            Recent withdrawals
-          </h2>
-
-          {data.withdrawals
-            .slice(0, 6)
-            .map(w => (
-              <div
-                className="row"
-                key={w.id}
-              >
-                <span>
-                  {w.method}
-                </span>
-
-                <b>
-                  {money(
-                    w.amount
-                  )}
-                </b>
-
-                <em>
-                  {w.status}
-                </em>
-              </div>
-            ))}
-
-        </div>
-
-        {/* TASKS */}
-
-        <div className="panel">
-
-          <h2>
-            Recent tasks
-          </h2>
-
-          {data.tasks
-            .slice(0, 6)
-            .map(t => (
-              <div
-                className="row"
-                key={t.id}
-              >
-                <span>
-                  {t.title}
-                </span>
-
-                <b>
-                  {money(
-                    t.reward
-                  )}
-                </b>
-
-                <em>
-                  {t.status}
-                </em>
-              </div>
-            ))}
-
-        </div>
-
-      </div>
-
-    </section>
-  );
-}
-
-/* =========================
-   TABLE
-========================= */
-
-function Table({
-  title,
-  rows,
-  cols,
-}) {
-  return (
-    <div className="panel">
-
-      <h2>{title}</h2>
-
-      <div className="tablewrap">
-
-        <table>
-
-          <thead>
-            <tr>
-              {cols.map(
-                column => (
-                  <th
-                    key={column}
-                  >
-                    {column}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {rows.map(row => (
-              <tr
-                key={row.id}
-              >
-
-                {cols.map(
-                  column => (
-                    <td
-                      key={column}
-                    >
-                      {String(
-                        row[
-                          column
-                        ] ?? ''
-                      )}
-                    </td>
-                  )
-                )}
-
-              </tr>
-            ))}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================
-   TASKS
-========================= */
-
-function Tasks({
-  tasks,
-  onRefresh,
-}) {
-  const [open, setOpen] =
-    useState(false);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [form, setForm] =
-    useState({
-      title: '',
-      description: '',
-      instructions: '',
-      reward: '',
-      status: 'published',
-      max_submissions: '',
-    });
-
-  async function save(e) {
     e.preventDefault();
 
-    if (saving) return;
-
-    setSaving(true);
+    setBusy(true);
 
     try {
-      const {
-        data: userData,
-        error: userError,
-      } =
-        await supabase.auth.getUser();
-
-      if (
-        userError ||
-        !userData?.user
-      ) {
-        throw new Error(
-          'Unable to identify admin user.'
-        );
-      }
-
-      const { error } =
-        await supabase
-          .from('tasks')
-          .insert({
-            title: form.title,
-            description:
-              form.description,
-            instructions:
-              form.instructions,
-            reward:
-              Number(
-                form.reward
-              ),
-            status:
-              form.status,
-            max_submissions:
-              form.max_submissions
-                ? Number(
-                    form.max_submissions
-                  )
-                : null,
-            created_by:
-              userData.user.id,
-          });
-
-      if (error) {
-        throw error;
-      }
-
-      setOpen(false);
-
-      setForm({
-        title: '',
-        description: '',
-        instructions: '',
-        reward: '',
-        status: 'published',
-        max_submissions: '',
-      });
-
-      await onRefresh();
-
-    } catch (error) {
-      alert(error.message);
-
+      await onLogin(email, password);
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
+
   }
 
   return (
-    <div className="panel">
 
-      <div className="toolbar">
+    <div className="app">
 
-        <h2>
-          Tasks
-        </h2>
+      <div className="login-card card">
 
-        <button
-          onClick={() =>
-            setOpen(!open)
-          }
-        >
-          + Add task
-        </button>
+        <h1>ZenexPay Admin</h1>
 
-      </div>
+        <p>Admin Login</p>
 
-      {open && (
-        <form
-          className="taskform"
-          onSubmit={save}
-        >
+        <form onSubmit={submit}>
 
           <input
-            placeholder="Title"
+            type="email"
+            placeholder="Admin email"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
             required
-            value={form.title}
-            onChange={e =>
-              setForm({
-                ...form,
-                title:
-                  e.target.value,
-              })
-            }
           />
 
           <input
-            placeholder="Reward"
-            type="number"
-            step="0.01"
-            min="0"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
             required
-            value={form.reward}
-            onChange={e =>
-              setForm({
-                ...form,
-                reward:
-                  e.target.value,
-              })
-            }
-          />
-
-          <input
-            placeholder="Max submissions (optional)"
-            type="number"
-            min="1"
-            value={
-              form.max_submissions
-            }
-            onChange={e =>
-              setForm({
-                ...form,
-                max_submissions:
-                  e.target.value,
-              })
-            }
-          />
-
-          <select
-            value={form.status}
-            onChange={e =>
-              setForm({
-                ...form,
-                status:
-                  e.target.value,
-              })
-            }
-          >
-            <option value="published">
-              published
-            </option>
-
-            <option value="draft">
-              draft
-            </option>
-
-            <option value="paused">
-              paused
-            </option>
-
-            <option value="closed">
-              closed
-            </option>
-          </select>
-
-          <textarea
-            placeholder="Description"
-            value={
-              form.description
-            }
-            onChange={e =>
-              setForm({
-                ...form,
-                description:
-                  e.target.value,
-              })
-            }
-          />
-
-          <textarea
-            placeholder="Instructions"
-            value={
-              form.instructions
-            }
-            onChange={e =>
-              setForm({
-                ...form,
-                instructions:
-                  e.target.value,
-              })
-            }
           />
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={busy}
           >
-            {saving
-              ? 'Saving...'
-              : 'Save task'}
+            {busy
+              ? "Logging in..."
+              : "Login"}
           </button>
 
         </form>
-      )}
-
-      <div className="list">
-
-        {tasks.map(t => (
-          <div
-            className="row"
-            key={t.id}
-          >
-
-            <div>
-              <b>
-                {t.title}
-              </b>
-
-              <small>
-                {t.description}
-              </small>
-            </div>
-
-            <b>
-              {money(t.reward)}
-            </b>
-
-            <em>
-              {t.status}
-            </em>
-
-          </div>
-        ))}
 
       </div>
 
     </div>
+
   );
 }
-
-/* =========================
-   SUBMISSIONS
-========================= */
-
-function Submissions({
-  rows,
-  onApprove,
-  onReject,
-}) {
-  return (
-    <div className="panel">
-
-      <h2>
-        Task submissions
-      </h2>
-
-      {rows.map(r => (
-        <div
-          className="item"
-          key={r.id}
-        >
-
-          <div>
-
-            <b>
-              {r.id.slice(0, 8)}
-              ...
-            </b>
-
-            <small>
-              User: {r.user_id}
-            </small>
-
-            <p>
-              {r.proof_text ||
-                'No proof text'}
-            </p>
-
-            {r.admin_note && (
-              <small>
-                Admin note:{' '}
-                {r.admin_note}
-              </small>
-            )}
-
-          </div>
-
-          <em>
-            {r.status}
-          </em>
-
-          {r.status ===
-            'pending' && (
-            <div className="actions">
-
-              <button
-                onClick={() =>
-                  onApprove(r.id)
-                }
-              >
-                Approve
-              </button>
-
-              <button
-                className="danger"
-                onClick={() =>
-                  onReject(r.id)
-                }
-              >
-                Reject
-              </button>
-
-            </div>
-          )}
-
-        </div>
-      ))}
-
-    </div>
-  );
-}
-
-/* =========================
-   WITHDRAWALS
-========================= */
-
-function Withdrawals({
-  rows,
-  onProcess,
-}) {
-  return (
-    <div className="panel">
-
-      <h2>
-        Withdrawals
-      </h2>
-
-      {rows.map(r => (
-        <div
-          className="item"
-          key={r.id}
-        >
-
-          <div>
-
-            <b>
-              {money(r.amount)}
-              {' • '}
-              {r.method}
-            </b>
-
-            <small>
-              {r.account_number}
-            </small>
-
-            <small>
-              User: {r.user_id}
-            </small>
-
-            {r.admin_note && (
-              <small>
-                Admin note:{' '}
-                {r.admin_note}
-              </small>
-            )}
-
-          </div>
-
-          <em>
-            {r.status}
-          </em>
-
-          {[
-            'pending',
-            'processing',
-          ].includes(
-            r.status
-          ) && (
-            <div className="actions">
-
-              <button
-                onClick={() =>
-                  onProcess(
-                    r.id,
-                    'paid'
-                  )
-                }
-              >
-                Mark paid
-              </button>
-
-              <button
-                className="danger"
-                onClick={() =>
-                  onProcess(
-                    r.id,
-                    'rejected'
-                  )
-                }
-              >
-                Reject
-              </button>
-
-            </div>
-          )}
-
-        </div>
-      ))}
-
-    </div>
-  );
-}
-
-/* =========================
-   START APP
-========================= */
 
 createRoot(
-  document.getElementById('root')
+  document.getElementById("root")
 ).render(
   <App />
 );
