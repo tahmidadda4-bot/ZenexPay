@@ -278,8 +278,6 @@ class SupabaseService {
       }
     }
 
-    // If the transaction table does not label earning rows clearly,
-    // approved task rewards are used as a safe fallback.
     if (totalEarned == 0) {
       for (final row in submissions) {
         if ('${row['status'] ?? ''}'.toLowerCase() != 'approved') {
@@ -403,14 +401,10 @@ class SupabaseService {
     final user = client.auth.currentUser;
     final metadata = user?.userMetadata ?? {};
 
-    String code =
-        '${metadata['referral_code'] ?? ''}'.trim();
-
+    String code = '${metadata['referral_code'] ?? ''}'.trim();
     int successful = 0;
 
-    // Referral data is optional in the client. If the project's
-    // referral table exists, use it; otherwise keep the profile
-    // screen usable with the auth metadata.
+    // রেফারেল টেবিল থেকে ইউজারের রেফারেল কাউন্ট আনার অংশ
     try {
       final rows = await client
           .from('referrals')
