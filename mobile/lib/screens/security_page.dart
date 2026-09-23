@@ -1,7 +1,217 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-class SecurityPage extends StatefulWidget{const SecurityPage({super.key});@override State<SecurityPage> createState()=>_SecurityPageState();}
-class _SecurityPageState extends State<SecurityPage>{final currentPassword=TextEditingController(),newPassword=TextEditingController(),confirmPassword=TextEditingController();bool o1=true,o2=true,o3=true,busy=false;@override void dispose(){currentPassword.dispose();newPassword.dispose();confirmPassword.dispose();super.dispose();}void _msg(String x){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(x),behavior:SnackBarBehavior.floating));}Future<void> changePassword()async{final n=newPassword.text.trim(),c=confirmPassword.text.trim();if(n.length<6){_msg('Password must be at least 6 characters.');return;}if(n!=c){_msg('New passwords do not match.');return;}setState(()=>busy=true);try{await Supabase.instance.client.auth.updateUser(UserAttributes(password:n));newPassword.clear();confirmPassword.clear();currentPassword.clear();_msg('Password changed successfully.');}on AuthException catch(e){_msg(e.message);}catch(_){_msg('Could not change password.');}finally{if(mounted)setState(()=>busy=false);}}Future<void> signOut()async{await Supabase.instance.client.auth.signOut();if(mounted)Navigator.of(context).popUntil((r)=>r.isFirst);}
-@override Widget build(BuildContext c){final u=Supabase.instance.client.auth.currentUser;final name=(u?.userMetadata?['full_name']as String?)?.trim()??'';return Scaffold(appBar:AppBar(title:const Text('Account Security',style:TextStyle(fontWeight:FontWeight.w900))),body:ListView(padding:const EdgeInsets.fromLTRB(16,10,16,30),children:[Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF111827),Color(0xFF5B5AF7)]),borderRadius:BorderRadius.circular(26)),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:Colors.white12,borderRadius:BorderRadius.circular(18)),child:const Icon(Icons.verified_user_rounded,color:Colors.white,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(name.isEmpty?'ZenexPay User':name,style:const TextStyle(color:Colors.white,fontSize:19,fontWeight:FontWeight.w900)),const SizedBox(height:4),Text(u?.email??'No email',maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(color:Colors.white70))]))]),const SizedBox(height:18),Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Theme.of(c).colorScheme.surface,borderRadius:BorderRadius.circular(24),border:Border.all(color:Theme.of(c).dividerColor.withOpacity(.5))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Row(children:[Icon(Icons.lock_reset_rounded),SizedBox(width:9),Text('Change password',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900))]),const SizedBox(height:16),_field(currentPassword,'Current password',o1,()=>setState(()=>o1=!o1)),const SizedBox(height:12),_field(newPassword,'New password',o2,()=>setState(()=>o2=!o2)),const SizedBox(height:12),_field(confirmPassword,'Confirm new password',o3,()=>setState(()=>o3=!o3)),const SizedBox(height:15),SizedBox(width:double.infinity,height:52,child:FilledButton.icon(onPressed:busy?null:changePassword,icon:busy?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.save_rounded),label:Text(busy?'Changing...':'Change Password')))])),const SizedBox(height:14),Container(decoration:BoxDecoration(color:Theme.of(c).colorScheme.surface,borderRadius:BorderRadius.circular(22),border:Border.all(color:Theme.of(c).dividerColor.withOpacity(.5))),child:Column(children:[const ListTile(leading:Icon(Icons.shield_outlined),title:Text('Authentication',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:Text('Your account is secured by Supabase Authentication.')),const Divider(height:1),ListTile(leading:const Icon(Icons.logout_rounded),title:const Text('Sign out',style:TextStyle(fontWeight:FontWeight.w800)),subtitle:const Text('Sign out from this device.'),onTap:signOut)]))]));}
-Widget _field(TextEditingController c,String label,bool obscure,VoidCallback toggle)=>TextField(controller:c,obscureText:obscure,decoration:InputDecoration(labelText:label,prefixIcon:const Icon(Icons.lock_outline_rounded),suffixIcon:IconButton(onPressed:toggle,icon:Icon(obscure?Icons.visibility:Icons.visibility_off))));
+
+class SecurityPage extends StatefulWidget {
+  const SecurityPage({super.key});
+  @override
+  State<SecurityPage> createState() => _SecurityPageState();
+}
+
+class _SecurityPageState extends State<SecurityPage> {
+  final currentPassword = TextEditingController(),
+      newPassword = TextEditingController(),
+      confirmPassword = TextEditingController();
+  bool o1 = true, o2 = true, o3 = true, busy = false;
+
+  @override
+  void dispose() {
+    currentPassword.dispose();
+    newPassword.dispose();
+    confirmPassword.dispose();
+    super.dispose();
+  }
+
+  void _msg(String x) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(x), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> changePassword() async {
+    final n = newPassword.text.trim(), c = confirmPassword.text.trim();
+    if (n.length < 6) {
+      _msg('Password must be at least 6 characters.');
+      return;
+    }
+    if (n != c) {
+      _msg('New passwords do not match.');
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      await Supabase.instance.client.auth
+          .updateUser(UserAttributes(password: n));
+      newPassword.clear();
+      confirmPassword.clear();
+      currentPassword.clear();
+      _msg('Password changed successfully.');
+    } on AuthException catch (e) {
+      _msg(e.message);
+    } catch (_) {
+      _msg('Could not change password.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
+    if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  @override
+  Widget build(BuildContext c) {
+    final u = Supabase.instance.client.auth.currentUser;
+    final name = (u?.userMetadata?['full_name'] as String?)?.trim() ?? '';
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Account Security',
+            style: TextStyle(fontWeight: FontWeight.w900)),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF111827), Color(0xFF5B5AF7)],
+              ),
+              borderRadius: BorderRadius.circular(26),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(Icons.verified_user_rounded,
+                      color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name.isEmpty ? 'ZenexPay User' : name,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        u?.email ?? 'No email',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Theme.of(c).colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+              border:
+                  Border.all(color: Theme.of(c).dividerColor.withOpacity(.5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.lock_reset_rounded),
+                    SizedBox(width: 9),
+                    Text('Change password',
+                        style: TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w900)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _field(currentPassword, 'Current password', o1,
+                    () => setState(() => o1 = !o1)),
+                const SizedBox(height: 12),
+                _field(newPassword, 'New password', o2,
+                    () => setState(() => o2 = !o2)),
+                const SizedBox(height: 12),
+                _field(confirmPassword, 'Confirm new password', o3,
+                    () => setState(() => o3 = !o3)),
+                const SizedBox(height: 15),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: busy ? null : changePassword,
+                    icon: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.save_rounded),
+                    label: Text(busy ? 'Changing...' : 'Change Password'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(c).colorScheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border:
+                  Border.all(color: Theme.of(c).dividerColor.withOpacity(.5)),
+            ),
+            child: Column(
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.shield_outlined),
+                  title: Text('Authentication',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text(
+                      'Your account is secured by Supabase Authentication.'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded),
+                  title: const Text('Sign out',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('Sign out from this device.'),
+                  onTap: signOut,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController c, String label, bool obscure,
+          VoidCallback toggle) =>
+      TextField(
+        controller: c,
+        obscureText: obscure,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.lock_outline_rounded),
+          suffixIcon: IconButton(
+            onPressed: toggle,
+            icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+          ),
+        ),
+      );
 }
