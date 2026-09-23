@@ -189,7 +189,7 @@ class _Chart extends StatelessWidget {
                 Text(p.amount <= 0 ? '0' : '৳${money(p.amount)}', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Container(
-                  height: h.toDouble()
+                  height: h.toDouble(), // <-- এখানে কমা (,) ঠিক করা হয়েছে
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xFF2563EB), Color(0xFF7C3AED)]),
                     borderRadius: BorderRadius.circular(8),
