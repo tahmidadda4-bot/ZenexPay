@@ -1,19 +1,254 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 
-class TasksPage extends StatefulWidget { const TasksPage({super.key}); @override State<TasksPage> createState()=>_TasksPageState(); }
-class _TasksPageState extends State<TasksPage>{
- late Future<List<Map<String,dynamic>>> future;
- @override void initState(){super.initState();future=SupabaseService.tasks();}
- Future<void> _reload() async {setState(()=>future=SupabaseService.tasks());await future;}
- Future<void> openTask(Map<String,dynamic> task) async {
-  final proof=TextEditingController();
-  final sent=await showModalBottomSheet<bool>(context:context,isScrollControlled:true,showDragHandle:true,backgroundColor:Theme.of(context).colorScheme.surface,builder:(_)=>Padding(padding:EdgeInsets.only(bottom:MediaQuery.viewInsetsOf(context).bottom),child:SafeArea(child:SingleChildScrollView(padding:const EdgeInsets.fromLTRB(20,8,20,24),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-   Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(gradient:const LinearGradient(colors:[Color(0xFF5B5AF7),Color(0xFF2563EB)]),borderRadius:BorderRadius.circular(22)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Icon(Icons.task_alt_rounded,color:Colors.white,size:30),const SizedBox(height:10),Text('${task['title']??'Task'}',style:const TextStyle(color:Colors.white,fontSize:23,fontWeight:FontWeight.w900)),const SizedBox(height:8),Text('Reward  •  ৳ ${task['reward']??0}',style:const TextStyle(color:Colors.white70,fontWeight:FontWeight.w700))]),
-   const SizedBox(height:18),const Text('Description',style:TextStyle(fontWeight:FontWeight.w900,fontSize:16)),const SizedBox(height:6),Text('${task['description']??''}',style:const TextStyle(height:1.45)),const SizedBox(height:18),const Text('Instructions',style:TextStyle(fontWeight:FontWeight.w900,fontSize:16)),const SizedBox(height:6),Text('${task['instructions']??''}',style:const TextStyle(height:1.45)),const SizedBox(height:18),TextField(controller:proof,maxLines:5,decoration:const InputDecoration(labelText:'Submission details',hintText:'Describe what you completed...',alignLabelWithHint:true)),const SizedBox(height:10),const Text('If the reviewer needs visual proof, you can upload it later from Submissions.',style:TextStyle(fontSize:12,color:Colors.grey)),const SizedBox(height:16),SizedBox(height:54,child:FilledButton.icon(onPressed:()=>Navigator.pop(context,true),icon:const Icon(Icons.send_rounded),label:Text('Submit • ৳ ${task['reward']??0}')))
-  ]))));
-  if(sent==true){try{await SupabaseService.submitTask(taskId:'${task['id']}',proofText:proof.text.trim());if(mounted){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Task submitted. Waiting for admin review.')));await _reload();}}catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(cleanError(e)));)}} proof.dispose();
- }
- @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Task Center',style:TextStyle(fontWeight:FontWeight.w900)),actions:[IconButton(onPressed:_reload,icon:const Icon(Icons.refresh_rounded))]),body:FutureBuilder<List<Map<String,dynamic>>>(future:future,builder:(context,s){if(s.connectionState!=ConnectionState.done)return const Center(child:CircularProgressIndicator());if(s.hasError)return Center(child:Text(cleanError(s.error)));final items=s.data??[];if(items.isEmpty)return RefreshIndicator(onRefresh:_reload,child:ListView(physics:const AlwaysScrollableScrollPhysics(),children:const [SizedBox(height:180),Icon(Icons.task_alt_outlined,size:60),SizedBox(height:12),Center(child:Text('No published tasks right now.',style:TextStyle(fontWeight:FontWeight.w800)))]));return RefreshIndicator(onRefresh:_reload,child:ListView.separated(physics:const AlwaysScrollableScrollPhysics(),padding:const EdgeInsets.fromLTRB(16,10,16,30),itemCount:items.length,separatorBuilder:(_,__)=>const SizedBox(height:12),itemBuilder:(_,i){final t=items[i];return _TaskCard(task:t,onTap:()=>openTask(t));}));}));
+class TasksPage extends StatefulWidget {
+  const TasksPage({super.key});
+
+  @override
+  State<TasksPage> createState() => _TasksPageState();
 }
-class _TaskCard extends StatelessWidget{final Map<String,dynamic> task;final VoidCallback onTap;const _TaskCard({required this.task,required this.onTap});@override Widget build(BuildContext c){final primary=Theme.of(c).colorScheme.primary;return Container(decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),border:Border.all(color:primary.withOpacity(.12)),gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Theme.of(c).colorScheme.surface,primary.withOpacity(.035)])),child:InkWell(onTap:onTap,borderRadius:BorderRadius.circular(24),child:Padding(padding:const EdgeInsets.all(17),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Container(width:46,height:46,decoration:BoxDecoration(color:primary.withOpacity(.12),borderRadius:BorderRadius.circular(15)),child:Icon(Icons.task_alt_rounded,color:primary)),const SizedBox(width:12),Expanded(child:Text('${task['title']??''}',style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900))),Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:8),decoration:BoxDecoration(color:primary.withOpacity(.1),borderRadius:BorderRadius.circular(14)),child:Text('৳ ${task['reward']??0}',style:TextStyle(color:primary,fontWeight:FontWeight.w900)))]),const SizedBox(height:13),Text('${task['description']??''}',maxLines:3,overflow:TextOverflow.ellipsis,style:const TextStyle(height:1.4)),const SizedBox(height:14),Row(children:[Icon(task['proof_required']==true?Icons.verified_user_outlined:Icons.flash_on_rounded,size:17,color:primary),const SizedBox(width:7),Expanded(child:Text(task['proof_required']==true?'Review may request proof':'Quick submission available',style:TextStyle(fontSize:12,color:Theme.of(c).colorScheme.onSurface.withOpacity(.65)))),Icon(Icons.arrow_forward_rounded,color:primary)])]))));}}
+
+class _TasksPageState extends State<TasksPage> {
+  late Future<List<Map<String, dynamic>>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = SupabaseService.tasks();
+  }
+
+  Future<void> _reload() async {
+    setState(() => future = SupabaseService.tasks());
+    await future;
+  }
+
+  Future<void> openTask(Map<String, dynamic> task) async {
+    final proof = TextEditingController();
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF5B5AF7), Color(0xFF2563EB)]),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.task_alt_rounded, color: Colors.white, size: 30),
+                      const SizedBox(height: 10),
+                      Text(
+                        '${task['title'] ?? 'Task'}',
+                        style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Reward  •  ৳ ${task['reward'] ?? 0}',
+                        style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text('Description', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 6),
+                Text('${task['description'] ?? ''}', style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 18),
+                const Text('Instructions', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 6),
+                Text('${task['instructions'] ?? ''}', style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: proof,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Submission details',
+                    hintText: 'Describe what you completed...',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'If the reviewer needs visual proof, you can upload it later from Submissions.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 54,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.send_rounded),
+                    label: Text('Submit • ৳ ${task['reward'] ?? 0}'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (sent == true) {
+      try {
+        await SupabaseService.submitTask(taskId: '${task['id']}', proofText: proof.text.trim());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Task submitted. Waiting for admin review.')),
+          );
+          await _reload();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        }
+      }
+    }
+    proof.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Task Center', style: TextStyle(fontWeight: FontWeight.w900)),
+          actions: [IconButton(onPressed: _reload, icon: const Icon(Icons.refresh_rounded))],
+        ),
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, s) {
+            if (s.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (s.hasError) return Center(child: Text('${s.error}'));
+            final items = s.data ?? [];
+            if (items.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: _reload,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 180),
+                    Icon(Icons.task_alt_outlined, size: 60),
+                    SizedBox(height: 12),
+                    Center(child: Text('No published tasks right now.', style: TextStyle(fontWeight: FontWeight.w800))),
+                  ],
+                ),
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: _reload,
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) {
+                  final t = items[i];
+                  return _TaskCard(task: t, onTap: () => openTask(t));
+                },
+              ),
+            );
+          },
+        ),
+      );
+}
+
+class _TaskCard extends StatelessWidget {
+  final Map<String, dynamic> task;
+  final VoidCallback onTap;
+  const _TaskCard({required this.task, required this.onTap});
+
+  @override
+  Widget build(BuildContext c) {
+    final primary = Theme.of(c).colorScheme.primary;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: primary.withOpacity(.12)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Theme.of(c).colorScheme.surface, primary.withOpacity(.035)],
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(17),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(.12),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(Icons.task_alt_rounded, color: primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${task['title'] ?? ''}',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: primary.withOpacity(.1),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      '৳ ${task['reward'] ?? 0}',
+                      style: TextStyle(color: primary, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 13),
+              Text(
+                '${task['description'] ?? ''}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Icon(
+                    task['proof_required'] == true ? Icons.verified_user_outlined : Icons.flash_on_rounded,
+                    size: 17,
+                    color: primary,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      task['proof_required'] == true ? 'Review may request proof' : 'Quick submission available',
+                      style: TextStyle(fontSize: 12, color: Theme.of(c).colorScheme.onSurface.withOpacity(.65)),
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_rounded, color: primary),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
