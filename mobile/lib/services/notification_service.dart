@@ -89,25 +89,29 @@ class NotificationService {
     try {
       final user = Supabase.instance.client.auth.currentUser;
 
+      debugPrint('========== ZenexPay FCM DEBUG ==========');
+      debugPrint('USER ID: ${user?.id}');
+
       if (user == null) {
-        debugPrint('ZenexPay FCM: no logged-in user');
+        debugPrint('ERROR: No logged-in user');
         return;
       }
 
       final token = await messaging.getToken();
 
+      debugPrint('FCM TOKEN: $token');
+
       if (token == null || token.isEmpty) {
-        debugPrint('ZenexPay FCM: token is null/empty');
+        debugPrint('ERROR: FCM token is NULL or EMPTY');
         return;
       }
 
-      debugPrint('ZenexPay FCM token received: $token');
-
       await saveToken(token);
 
-      debugPrint('ZenexPay FCM token registration completed');
+      debugPrint('FCM saveToken() finished');
+      debugPrint('========================================');
     } catch (e, stack) {
-      debugPrint('ZenexPay FCM registration error: $e');
+      debugPrint('FCM REGISTRATION ERROR: $e');
       debugPrint('$stack');
     }
   }
@@ -115,12 +119,21 @@ class NotificationService {
   static Future<void> saveToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
 
-    if (user == null || token.isEmpty) {
-      debugPrint('ZenexPay FCM: user/token missing');
+    if (user == null) {
+      debugPrint('FCM SAVE ERROR: User is null');
+      return;
+    }
+
+    if (token.isEmpty) {
+      debugPrint('FCM SAVE ERROR: Token is empty');
       return;
     }
 
     try {
+      debugPrint('Saving FCM token to Supabase...');
+      debugPrint('User ID: ${user.id}');
+      debugPrint('Token length: ${token.length}');
+
       final response = await Supabase.instance.client
           .from('device_tokens')
           .upsert(
@@ -133,9 +146,9 @@ class NotificationService {
           )
           .select();
 
-      debugPrint('ZenexPay FCM token saved: $response');
+      debugPrint('SUPABASE TOKEN SAVE SUCCESS: $response');
     } catch (e, stack) {
-      debugPrint('ZenexPay FCM save error: $e');
+      debugPrint('SUPABASE TOKEN SAVE ERROR: $e');
       debugPrint('$stack');
     }
   }
