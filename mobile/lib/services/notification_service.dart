@@ -88,28 +88,56 @@ class NotificationService {
   static Future<void> registerCurrentDevice() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+
+      if (user == null) {
+        debugPrint('ZenexPay FCM: no logged-in user');
+        return;
+      }
+
       final token = await messaging.getToken();
-      if (token == null || token.isEmpty) return;
+
+      if (token == null || token.isEmpty) {
+        debugPrint('ZenexPay FCM: token is null/empty');
+        return;
+      }
+
+      debugPrint('ZenexPay FCM token received: $token');
+
       await saveToken(token);
-    } catch (e) {
-      debugPrint('ZenexPay FCM token error: $e');
+
+      debugPrint('ZenexPay FCM token registration completed');
+    } catch (e, stack) {
+      debugPrint('ZenexPay FCM registration error: $e');
+      debugPrint('$stack');
     }
   }
 
   static Future<void> saveToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null || token.isEmpty) return;
 
-    await Supabase.instance.client.from('device_tokens').upsert(
-      {
-        'user_id': user.id,
-        'token': token,
-        'platform': 'android',
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      },
-      onConflict: 'token',
-    );
+    if (user == null || token.isEmpty) {
+      debugPrint('ZenexPay FCM: user/token missing');
+      return;
+    }
+
+    try {
+      final response = await Supabase.instance.client
+          .from('device_tokens')
+          .upsert(
+            {
+              'user_id': user.id,
+              'token': token,
+              'platform': 'android',
+            },
+            onConflict: 'token',
+          )
+          .select();
+
+      debugPrint('ZenexPay FCM token saved: $response');
+    } catch (e, stack) {
+      debugPrint('ZenexPay FCM save error: $e');
+      debugPrint('$stack');
+    }
   }
 
   static Future<void> removeCurrentToken() async {
