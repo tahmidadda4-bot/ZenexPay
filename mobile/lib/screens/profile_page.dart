@@ -6,208 +6,100 @@ import 'achievements_page.dart';
 import 'referral_page.dart';
 import 'chat_page.dart';
 import 'security_page.dart';
-
-const _blue = Color(0xFF4F8CFF);
-const _purple = Color(0xFF8B5CF6);
-const _navy = Color(0xFF070B18);
+import 'settings_page.dart';
+import 'help_page.dart';
+import 'legal_page.dart';
+import 'notifications_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  void _push(BuildContext c, Widget page) => Navigator.push(
-        c,
-        MaterialPageRoute(builder: (_) => page),
-      );
+  void _push(BuildContext c, Widget p) => Navigator.push(c, MaterialPageRoute(builder: (_) => p));
 
   @override
   Widget build(BuildContext c) {
-    final user = Supabase.instance.client.auth.currentUser;
-    final name = (user?.userMetadata?['full_name'] as String?)?.trim() ?? '';
-    final email = user?.email ?? '';
-    final initial = name.isEmpty ? (email.isEmpty ? 'Z' : email[0].toUpperCase()) : name[0].toUpperCase();
+    final u = Supabase.instance.client.auth.currentUser;
+    final name = (u?.userMetadata?['full_name'] as String?)?.trim() ?? '';
+    final email = u?.email ?? '';
+    final initial = name.isEmpty ? 'Z' : name.substring(0, 1).toUpperCase();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w900)),
-        actions: [
-          IconButton(
-            tooltip: 'Security',
-            onPressed: () => _push(c, const SecurityPage()),
-            icon: const Icon(Icons.shield_outlined),
-          ),
-        ],
+        actions: [IconButton(onPressed: () => _push(c, const NotificationsPage()), icon: const Icon(Icons.notifications_none_rounded))],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
         children: [
-          _ProfileHero(name: name.isEmpty ? 'ZenexPay User' : name, email: email, initial: initial),
-          const SizedBox(height: 16),
-          const _SectionTitle('Your ZenexPay'),
-          const SizedBox(height: 10),
-          _ActionCard(
-            icon: Icons.insights_rounded,
-            title: 'Earnings analytics',
-            subtitle: 'Track earnings, approvals and activity',
-            onTap: () => _push(c, const AnalyticsPage()),
-          ),
-          const SizedBox(height: 10),
-          _ActionCard(
-            icon: Icons.workspace_premium_rounded,
-            title: 'Level & achievements',
-            subtitle: 'Milestones, badges and your progress',
-            onTap: () => _push(c, const AchievementsPage()),
-          ),
-          const SizedBox(height: 10),
-          _ActionCard(
-            icon: Icons.groups_rounded,
-            title: 'Referral center',
-            subtitle: 'Invite friends and manage referral codes',
-            onTap: () => _push(c, const ReferralPage()),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF0F5CFF), Color(0xFF6B35F4)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [BoxShadow(color: const Color(0xFF4D5DFF).withOpacity(.20), blurRadius: 26, offset: const Offset(0, 12))],
+            ),
+            child: Row(children: [
+              Container(width: 64, height: 64, decoration: BoxDecoration(color: Colors.white.withOpacity(.13), borderRadius: BorderRadius.circular(20)), child: Center(child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)))),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name.isEmpty ? 'ZenexPay User' : name, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)), const SizedBox(height: 5), Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70))])),
+            ]),
           ),
           const SizedBox(height: 18),
-          const _SectionTitle('Preferences & support'),
-          const SizedBox(height: 10),
-          _SettingsCard(children: [
-            ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeModeNotifier,
-              builder: (_, mode, __) => SwitchListTile.adaptive(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                secondary: const _IconBox(icon: Icons.dark_mode_outlined),
+          _MenuCard(items: [
+            _Item(Icons.insights_rounded, 'Earnings analytics', 'Charts, earnings and performance', () => _push(c, const AnalyticsPage())),
+            _Item(Icons.workspace_premium_rounded, 'Level & achievements', 'Milestones from approved work', () => _push(c, const AchievementsPage())),
+            _Item(Icons.people_alt_rounded, 'Referral center', 'Share and track referrals', () => _push(c, const ReferralPage())),
+          ]),
+          const SizedBox(height: 14),
+          _MenuCard(items: [
+            _Item(Icons.settings_rounded, 'Settings', 'Appearance, notifications and account options', () => _push(c, const SettingsPage())),
+            _Item(Icons.support_agent_rounded, 'Chat with Admin', 'Tasks, proof, wallet or withdrawals', () => _push(c, const ChatPage())),
+            _Item(Icons.security_rounded, 'Account security', 'Password and account security', () => _push(c, const SecurityPage())),
+            _Item(Icons.help_outline_rounded, 'Help & FAQ', 'Quick answers to common questions', () => _push(c, const HelpPage())),
+            _Item(Icons.description_outlined, 'Terms & Privacy', 'Service and privacy information', () => _push(c, const LegalPage())),
+          ]),
+          const SizedBox(height: 18),
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeModeNotifier,
+            builder: (_, mode, __) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+              decoration: BoxDecoration(color: Theme.of(c).colorScheme.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: Theme.of(c).dividerColor.withOpacity(.45))),
+              child: SwitchListTile.adaptive(
+                secondary: const Icon(Icons.dark_mode_outlined),
                 title: const Text('Dark mode', style: TextStyle(fontWeight: FontWeight.w800)),
                 subtitle: const Text('Use the premium dark interface'),
                 value: mode == ThemeMode.dark,
                 onChanged: (v) => themeModeNotifier.value = v ? ThemeMode.dark : ThemeMode.light,
               ),
             ),
-            const Divider(height: 1),
-            _SettingTile(
-              icon: Icons.support_agent_rounded,
-              title: 'Chat with Admin',
-              subtitle: 'Tasks, proof, wallet or withdrawals',
-              onTap: () => _push(c, const ChatPage()),
-            ),
-            const Divider(height: 1),
-            _SettingTile(
-              icon: Icons.security_rounded,
-              title: 'Account security',
-              subtitle: 'Password and account security',
-              onTap: () => _push(c, const SecurityPage()),
-            ),
-          ]),
-          const SizedBox(height: 18),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              foregroundColor: Theme.of(c).colorScheme.error,
-              side: BorderSide(color: Theme.of(c).colorScheme.error.withOpacity(.35)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
-            ),
-            onPressed: () async => Supabase.instance.client.auth.signOut(),
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(onPressed: () async { await Supabase.instance.client.auth.signOut(); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out')),
         ],
       ),
     );
   }
 }
 
-class _ProfileHero extends StatelessWidget {
-  final String name, email, initial;
-  const _ProfileHero({required this.name, required this.email, required this.initial});
+class _Item { final IconData i; final String t, s; final VoidCallback onTap; const _Item(this.i, this.t, this.s, this.onTap); }
 
+class _MenuCard extends StatelessWidget {
+  final List<_Item> items;
+  const _MenuCard({required this.items});
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_navy, Color(0xFF162A64), _purple],
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [BoxShadow(color: _purple.withOpacity(.20), blurRadius: 28, offset: const Offset(0, 12))],
-        ),
-        child: Row(children: [
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.13),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white.withOpacity(.16)),
-            ),
-            alignment: Alignment.center,
-            child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
-            Text(email.isEmpty ? 'Account' : email, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(.10), borderRadius: BorderRadius.circular(20)),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.verified_rounded, color: Colors.white, size: 14), SizedBox(width: 5), Text('ZenexPay member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))]),
-            ),
-          ])),
-        ]),
-      );
+  Widget build(BuildContext c) => Container(
+    decoration: BoxDecoration(color: Theme.of(c).colorScheme.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(c).dividerColor.withOpacity(.45))),
+    child: Column(children: [for (int i = 0; i < items.length; i++) ...[_MenuRow(item: items[i]), if (i < items.length - 1) const Divider(height: 1)]]),
+  );
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
+class _MenuRow extends StatelessWidget {
+  final _Item item;
+  const _MenuRow({required this.item});
   @override
-  Widget build(BuildContext context) => Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900));
-}
-
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String title, subtitle;
-  final VoidCallback onTap;
-  const _ActionCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Material(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(21),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(21),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(21), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(.45))),
-            child: Row(children: [
-              _IconBox(icon: icon),
-              const SizedBox(width: 13),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey))])),
-              const Icon(Icons.chevron_right_rounded),
-            ]),
-          ),
-        ),
-      );
-}
-
-class _SettingsCard extends StatelessWidget {
-  final List<Widget> children;
-  const _SettingsCard({required this.children});
-  @override
-  Widget build(BuildContext context) => Container(decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(.45))), child: Column(children: children));
-}
-
-class _SettingTile extends StatelessWidget {
-  final IconData icon;
-  final String title, subtitle;
-  final VoidCallback onTap;
-  const _SettingTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
-  @override
-  Widget build(BuildContext context) => ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4), leading: _IconBox(icon: icon), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(subtitle), trailing: const Icon(Icons.chevron_right_rounded), onTap: onTap);
-}
-
-class _IconBox extends StatelessWidget {
-  final IconData icon;
-  const _IconBox({required this.icon});
-  @override
-  Widget build(BuildContext context) => Container(width: 44, height: 44, decoration: BoxDecoration(color: _blue.withOpacity(.11), borderRadius: BorderRadius.circular(14)), alignment: Alignment.center, child: Icon(icon, color: _blue, size: 21));
+  Widget build(BuildContext c) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+    leading: Container(width: 44, height: 44, decoration: BoxDecoration(color: Theme.of(c).colorScheme.primary.withOpacity(.10), borderRadius: BorderRadius.circular(14)), child: Icon(item.i, color: Theme.of(c).colorScheme.primary)),
+    title: Text(item.t, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(item.s), trailing: const Icon(Icons.chevron_right_rounded), onTap: item.onTap,
+  );
 }
