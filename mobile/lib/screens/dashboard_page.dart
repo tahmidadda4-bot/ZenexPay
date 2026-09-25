@@ -14,12 +14,21 @@ import 'analytics_page.dart';
 class DashboardPage extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
   const DashboardPage({super.key, this.onTabSelected});
-  @override State<DashboardPage> createState() => _DashboardPageState();
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
   late Future<Map<String, dynamic>?> wallet;
-  @override void initState() { super.initState(); wallet = SupabaseService.wallet(); NotificationService.registerCurrentDevice(); }
+
+  @override
+  void initState() {
+    super.initState();
+    wallet = SupabaseService.wallet();
+    NotificationService.registerCurrentDevice();
+  }
+
   void refresh() => setState(() => wallet = SupabaseService.wallet());
   void tab(int i) => widget.onTabSelected?.call(i);
   void push(Widget p) => Navigator.push(context, MaterialPageRoute(builder: (_) => p));
@@ -29,27 +38,404 @@ class _DashboardPageState extends State<DashboardPage> {
     final user = Supabase.instance.client.auth.currentUser;
     final name = (user?.userMetadata?['full_name'] as String?)?.trim();
     final first = name == null || name.isEmpty ? 'there' : name.split(' ').first;
-    return Scaffold(backgroundColor: zenexBackground(context), body: ZenexGlowBackground(safeArea: false, child: RefreshIndicator(color: kCyan, backgroundColor: zenexPanel(context), onRefresh: () async { refresh(); await wallet; }, child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.fromLTRB(16, 18, 16, 30), children: [
-      Row(children: [const ZenexLogo(size: 45), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Hello, $first 👋', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 2), const Text('Good to see you again!', style: TextStyle(color: Colors.white54, fontSize: 10))])), _CircleButton(Icons.notifications_none_rounded, () => push(const NotificationsPage())), const SizedBox(width: 8), _CircleButton(Icons.support_agent_rounded, () => push(const ChatPage()))]),
-      const SizedBox(height: 18), _balanceCard(), const SizedBox(height: 14), _quickActions(), const SizedBox(height: 22), _section('Daily Goal', 'Complete tasks and keep your streak moving'), const SizedBox(height: 9), _goalCard(), const SizedBox(height: 22), _section('Featured Tasks', 'Simple tasks with clear rewards', trailing: TextButton(onPressed: () => tab(1), child: const Text('View All'))), const SizedBox(height: 9), _taskPreview(), const SizedBox(height: 22), _section('More Features', 'Everything you need in one place'), const SizedBox(height: 9), _features(), const SizedBox(height: 22), _section('How ZenexPay Works', 'Three simple steps'), const SizedBox(height: 9), _howItWorks(),
-    ]))));
+
+    return Scaffold(
+      backgroundColor: zenexBackground(context),
+      body: ZenexGlowBackground(
+        safeArea: false,
+        child: RefreshIndicator(
+          color: kCyan,
+          backgroundColor: zenexPanel(context),
+          onRefresh: () async {
+            refresh();
+            await wallet;
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
+            children: [
+              Row(
+                children: [
+                  const ZenexLogo(size: 45),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hello, $first 👋',
+                          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Good to see you again!',
+                          style: TextStyle(color: Colors.white54, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _circleButton(Icons.notifications_none_rounded, () => push(const NotificationsPage())),
+                  const SizedBox(width: 8),
+                  _circleButton(Icons.support_agent_rounded, () => push(const ChatPage())),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _balanceCard(),
+              const SizedBox(height: 14),
+              _quickActions(),
+              const SizedBox(height: 22),
+              _section('Daily Goal', 'Complete tasks and keep your streak moving'),
+              const SizedBox(height: 9),
+              _goalCard(),
+              const SizedBox(height: 22),
+              _section(
+                'Featured Tasks',
+                'Simple tasks with clear rewards',
+                trailing: TextButton(
+                  onPressed: () => tab(1),
+                  child: const Text('View All'),
+                ),
+              ),
+              const SizedBox(height: 9),
+              _taskPreview(),
+              const SizedBox(height: 22),
+              _section('More Features', 'Everything you need in one place'),
+              const SizedBox(height: 9),
+              _features(),
+              const SizedBox(height: 22),
+              _section('How ZenexPay Works', 'Three simple steps'),
+              const SizedBox(height: 9),
+              _howItWorks(),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _balanceCard() => FutureBuilder<Map<String, dynamic>?>(future: wallet, builder: (_, s) { final b=s.data?['balance']??0, e=s.data?['total_earned']??0; return Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft,end: Alignment.bottomRight,colors:[Color(0xFF135CFF),Color(0xFF6C35FF),Color(0xFFB338FF)]), borderRadius: BorderRadius.circular(27), border: Border.all(color: kCyan.withOpacity(.22)), boxShadow:[BoxShadow(color:kPurple.withOpacity(.28),blurRadius:30,offset:const Offset(0,12))]), child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[Container(width:38,height:38,decoration:BoxDecoration(color:Colors.white.withOpacity(.12),borderRadius:BorderRadius.circular(13)),child:const Icon(Icons.account_balance_wallet_rounded,color:Colors.white,size:20)),const SizedBox(width:9),const Expanded(child:Text('WALLET BALANCE',style:TextStyle(color:Colors.white70,fontSize:10,fontWeight:FontWeight.w800,letterSpacing:1.1))),Container(padding:const EdgeInsets.symmetric(horizontal:9,vertical:5),decoration:BoxDecoration(color:Colors.white.withOpacity(.12),borderRadius:BorderRadius.circular(20)),child:const Text('LIVE',style:TextStyle(color:Colors.white,fontSize:9,fontWeight:FontWeight.w900)))]),const SizedBox(height:10),Text('৳ ${zenexMoney(b)}',style:const TextStyle(color:Colors.white,fontSize:34,fontWeight:FontWeight.w900)),const SizedBox(height:3),Text('Total earned  ৳ ${zenexMoney(e)}',style:const TextStyle(color:Colors.white70,fontSize:11)),const SizedBox(height:16),Row(children:[_mini('Available','৳ ${zenexMoney(b)}'),Container(width:1,height:28,color:Colors.white24),_mini('Total earned','৳ ${zenexMoney(e)}')])])); });
-  Widget _mini(String a,String b)=>Expanded(child:Padding(padding:const EdgeInsets.symmetric(horizontal:4),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(a,style:const TextStyle(color:Colors.white60,fontSize:9)),const SizedBox(height:3),Text(b,style:const TextStyle(color:Colors.white,fontSize:12,fontWeight:FontWeight.w900))])));
+  Widget _balanceCard() => FutureBuilder<Map<String, dynamic>?>(
+        future: wallet,
+        builder: (_, s) {
+          final b = s.data?['balance'] ?? 0;
+          final e = s.data?['total_earned'] ?? 0;
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF135CFF), Color(0xFF6C35FF), Color(0xFFB338FF)],
+              ),
+              borderRadius: BorderRadius.circular(27),
+              border: Border.all(color: kCyan.withOpacity(.22)),
+              boxShadow: [
+                BoxShadow(color: kPurple.withOpacity(.28), blurRadius: 30, offset: const Offset(0, 12))
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.12),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 9),
+                    const Expanded(
+                      child: Text(
+                        'WALLET BALANCE',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('৳ ${zenexMoney(b)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 3),
+                Text('Total earned  ৳ ${zenexMoney(e)}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _mini('Available', '৳ ${zenexMoney(b)}'),
+                    Container(width: 1, height: 28, color: Colors.white24),
+                    _mini('Total earned', '৳ ${zenexMoney(e)}'),
+                  ],
+                )
+              ],
+            ),
+          );
+        },
+      );
 
-  Widget _quickActions()=>Row(children:[_action(Icons.task_alt_rounded,'Tasks','Earn more',()=>tab(1)),const SizedBox(width:8),_action(Icons.account_balance_wallet_rounded,'Wallet','Withdraw',()=>tab(2)),const SizedBox(width:8),_action(Icons.people_alt_rounded,'Referral','Invite',()=>tab(3))]);
-  Widget _action(IconData i,String t,String s,VoidCallback tap)=>Expanded(child:InkWell(onTap:tap,borderRadius:BorderRadius.circular(18),child:Container(padding:const EdgeInsets.symmetric(vertical:12),decoration:BoxDecoration(color:zenexPanel(context),borderRadius:BorderRadius.circular(18),border:Border.all(color:zenexSubtleBorder(context))),child:Column(children:[Container(width:38,height:38,decoration:BoxDecoration(color:kBlue.withOpacity(.11),borderRadius:BorderRadius.circular(12)),child:Icon(i,color:kBlue,size:19)),const SizedBox(height:7),Text(t,style:const TextStyle(fontSize:11,fontWeight:FontWeight.w900)),Text(s,style:const TextStyle(color:Colors.white45,fontSize:8))]))));
-  Widget _section(String t,String s,{Widget? trailing})=>Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(t,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(s,style:const TextStyle(color:Colors.white45,fontSize:10))])),if(trailing!=null)trailing!]);
+  Widget _mini(String a, String b) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(a, style: const TextStyle(color: Colors.white60, fontSize: 9)),
+              const SizedBox(height: 3),
+              Text(b, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      );
 
-  Widget _goalCard()=>GlassCard(glow:true,padding:const EdgeInsets.all(15),child:Column(children:[Row(children:[Container(width:38,height:38,decoration:BoxDecoration(color:kBlue.withOpacity(.13),borderRadius:BorderRadius.circular(12)),child:const Icon(Icons.flag_rounded,color:kBlue)),const SizedBox(width:10),const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Complete 3 tasks',style:TextStyle(fontWeight:FontWeight.w900,fontSize:13)),SizedBox(height:3),Text('2 / 3 completed today',style:TextStyle(color:Colors.white54,fontSize:10))])),const Text('67%',style:TextStyle(color:kCyan,fontWeight:FontWeight.w900,fontSize:12))]),const SizedBox(height:12),ClipRRect(borderRadius:BorderRadius.circular(99),child:LinearProgressIndicator(value:.67,minHeight:8,backgroundColor:Colors.white10,valueColor:const AlwaysStoppedAnimation(kCyan)))]));
+  Widget _quickActions() => Row(
+        children: [
+          _action(Icons.task_alt_rounded, 'Tasks', 'Earn more', () => tab(1)),
+          const SizedBox(width: 8),
+          _action(Icons.account_balance_wallet_rounded, 'Wallet', 'Withdraw', () => tab(2)),
+          const SizedBox(width: 8),
+          _action(Icons.people_alt_rounded, 'Referral', 'Invite', () => tab(3)),
+        ],
+      );
 
-  Widget _taskPreview()=>GlassCard(padding:EdgeInsets.zero,child:Column(children:[_taskRow(Icons.play_circle_fill_rounded,'Watch Video','Earn ৳ 5.00','Easy',const Color(0xFFB33DFF)),const Divider(height:1),_taskRow(Icons.download_rounded,'App Install','Earn ৳ 8.00','Medium',kBlue)]));
-  Widget _taskRow(IconData i,String title,String reward,String level,Color c)=>ListTile(contentPadding:const EdgeInsets.symmetric(horizontal:13,vertical:5),leading:Container(width:42,height:42,decoration:BoxDecoration(color:c.withOpacity(.12),borderRadius:BorderRadius.circular(13)),child:Icon(i,color:c)),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900,fontSize:12)),subtitle:Text(reward,style:const TextStyle(color:Colors.white54,fontSize:10)),trailing:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:kPurple.withOpacity(.18),borderRadius:BorderRadius.circular(12)),child:Text(level,style:const TextStyle(color:kCyan,fontSize:9,fontWeight:FontWeight.w900))));
+  Widget _action(IconData i, String t, String s, VoidCallback tap) => Expanded(
+        child: InkWell(
+          onTap: tap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: zenexPanel(context),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: zenexSubtleBorder(context)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: kBlue.withOpacity(.11),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(i, color: kBlue, size: 19),
+                ),
+                const SizedBox(height: 7),
+                Text(t, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                Text(s, style: const TextStyle(color: Colors.white45, fontSize: 8)),
+              ],
+            ),
+          ),
+        ),
+      );
 
-  Widget _features()=>GridView.count(crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),mainAxisSpacing:9,crossAxisSpacing:9,childAspectRatio:2.25,children:[_feature(Icons.event_available_rounded,'Daily Check-in',()=>push(const DailyCheckInPage())),_feature(Icons.flag_rounded,'Daily Missions',()=>push(const DailyMissionsPage())),_feature(Icons.insights_rounded,'Analytics',()=>push(const AnalyticsPage())),_feature(Icons.leaderboard_rounded,'Leaderboard',()=>push(const LeaderboardPage())),_feature(Icons.card_giftcard_rounded,'Rewards',()=>push(const PromoPage())),_feature(Icons.support_agent_rounded,'Support',()=>push(const ChatPage()))]);
-  Widget _feature(IconData i,String t,VoidCallback tap)=>InkWell(onTap:tap,borderRadius:BorderRadius.circular(16),child:Container(padding:const EdgeInsets.symmetric(horizontal:10),decoration:BoxDecoration(color:zenexPanel(context),borderRadius:BorderRadius.circular(16),border:Border.all(color:zenexSubtleBorder(context))),child:Row(children:[Icon(i,color:kPurple,size:19),const SizedBox(width:8),Expanded(child:Text(t,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:10,fontWeight:FontWeight.w800)))])));
-  Widget _howItWorks()=>GlassCard(padding:const EdgeInsets.all(15),child:Column(children:[_step('01',Icons.search_rounded,'Choose a task','Read the requirements and reward.'),_step('02',Icons.upload_file_rounded,'Submit proof','Complete the work and send proof.'),_step('03',Icons.verified_rounded,'Get rewarded','Approved work adds money to your wallet.')]));;
-  Widget _step(String n,IconData i,String t,String s)=>Padding(padding:const EdgeInsets.only(bottom:12),child:Row(children:[Container(width:38,height:38,decoration:const BoxDecoration(shape:BoxShape.circle,gradient:LinearGradient(colors:[kBlue,kPurple])),child:Icon(i,color:Colors.white,size:18)),const SizedBox(width:11),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('$n  $t',style:const TextStyle(fontSize:11,fontWeight:FontWeight.w900)),const SizedBox(height:2),Text(s,style:const TextStyle(color:Colors.white45,fontSize:9))]))]));
-  Widget _CircleButton(IconData i,VoidCallback tap)=>InkWell(onTap:tap,borderRadius:BorderRadius.circular(14),child:Container(width:42,height:42,decoration:BoxDecoration(color:zenexPanel(context),borderRadius:BorderRadius.circular(14),border:Border.all(color:zenexSubtleBorder(context))),child:Icon(i,color:Colors.white70,size:20)));
+  Widget _section(String t, String s, {Widget? trailing}) => Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 2),
+                Text(s, style: const TextStyle(color: Colors.white45, fontSize: 10)),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing,
+        ],
+      );
+
+  Widget _goalCard() => GlassCard(
+        glow: true,
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: kBlue.withOpacity(.13),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.flag_rounded, color: kBlue),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Complete 3 tasks', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      SizedBox(height: 3),
+                      Text('2 / 3 completed today', style: TextStyle(color: Colors.white54, fontSize: 10)),
+                    ],
+                  ),
+                ),
+                const Text('67%', style: TextStyle(color: kCyan, fontWeight: FontWeight.w900, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: const LinearProgressIndicator(
+                value: .67,
+                minHeight: 8,
+                backgroundColor: Colors.white10,
+                valueColor: AlwaysStoppedAnimation(kCyan),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _taskPreview() => GlassCard(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            _taskRow(Icons.play_circle_fill_rounded, 'Watch Video', 'Earn ৳ 5.00', 'Easy', const Color(0xFFB33DFF)),
+            const Divider(height: 1),
+            _taskRow(Icons.download_rounded, 'App Install', 'Earn ৳ 8.00', 'Medium', kBlue),
+          ],
+        ),
+      );
+
+  Widget _taskRow(IconData i, String title, String reward, String level, Color c) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: c.withOpacity(.12),
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(i, color: c),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+        subtitle: Text(reward, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: kPurple.withOpacity(.18),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            level,
+            style: const TextStyle(color: kCyan, fontSize: 9, fontWeight: FontWeight.w900),
+          ),
+        ),
+      );
+
+  Widget _features() => GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 9,
+        crossAxisSpacing: 9,
+        childAspectRatio: 2.25,
+        children: [
+          _feature(Icons.event_available_rounded, 'Daily Check-in', () => push(const DailyCheckInPage())),
+          _feature(Icons.flag_rounded, 'Daily Missions', () => push(const DailyMissionsPage())),
+          _feature(Icons.insights_rounded, 'Analytics', () => push(const AnalyticsPage())),
+          _feature(Icons.leaderboard_rounded, 'Leaderboard', () => push(const LeaderboardPage())),
+          _feature(Icons.card_giftcard_rounded, 'Rewards', () => push(const PromoPage())),
+          _feature(Icons.support_agent_rounded, 'Support', () => push(const ChatPage())),
+        ],
+      );
+
+  Widget _feature(IconData i, String t, VoidCallback tap) => InkWell(
+        onTap: tap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: zenexPanel(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: zenexSubtleBorder(context)),
+          ),
+          child: Row(
+            children: [
+              Icon(i, color: kPurple, size: 19),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  t,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _howItWorks() => GlassCard(
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          children: [
+            _step('01', Icons.search_rounded, 'Choose a task', 'Read the requirements and reward.'),
+            _step('02', Icons.upload_file_rounded, 'Submit proof', 'Complete the work and send proof.'),
+            _step('03', Icons.verified_rounded, 'Get rewarded', 'Approved work adds money to your wallet.'),
+          ],
+        ),
+      );
+
+  Widget _step(String n, IconData i, String t, String s) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(colors: [kBlue, kPurple]),
+              ),
+              child: Icon(i, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$n  $t', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(s, style: const TextStyle(color: Colors.white45, fontSize: 9)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _circleButton(IconData i, VoidCallback tap) => InkWell(
+        onTap: tap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: zenexPanel(context),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: zenexSubtleBorder(context)),
+          ),
+          child: Icon(i, color: Colors.white70, size: 20),
+        ),
+      );
 }
