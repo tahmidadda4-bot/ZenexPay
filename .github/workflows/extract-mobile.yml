@@ -1,0 +1,26 @@
+name: Extract Mobile ZIP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract ZIP exactly as it is
+        run: |
+          unzip -o Mobile.zip
+          rm -f Mobile.zip
+
+      - name: Save extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git commit -m "Extract Mobile.zip"
+          git push
