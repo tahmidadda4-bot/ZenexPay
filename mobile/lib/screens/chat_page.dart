@@ -751,7 +751,7 @@ class _ChatPageState extends State<ChatPage> {
                     color: scheme.surface,
                     border: Border(
                       top: BorderSide(
-                        color: scheme.dividerColor
+                        color: Theme.of(context).dividerColor,
                             .withOpacity(.45),
                       ),
                     ),
