@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -742,16 +743,35 @@ class SupabaseService {
     required String conversationId,
     required String message,
   }) async {
-    final result = await client.functions.invoke(
-      'ai-support',
-      body: {
-        'conversation_id': conversationId,
-        'message': message,
-      },
-    );
-    final raw = result.data;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    throw Exception('AI support is temporarily unavailable.');
+    try {
+      final result = await client.functions.invoke(
+        'ai-support',
+        body: {
+          'conversation_id': conversationId,
+          'message': message,
+        },
+      );
+
+      final raw = result.data;
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+      throw Exception('AI support returned an invalid response.');
+    } on FunctionException catch (e) {
+      // Supabase throws FunctionException for non-2xx responses. The Edge
+      // Function intentionally returns structured JSON for temporary AI
+      // failures, so preserve that response for ChatPage instead of treating
+      // it as a reason to hand the user to Admin.
+      final details = e.details;
+      if (details is Map) {
+        return Map<String, dynamic>.from(details);
+      }
+      if (details is String && details.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(details);
+          if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        } catch (_) {}
+      }
+      rethrow;
+    }
   }
 
   static Future<String> sendSupportMessage({

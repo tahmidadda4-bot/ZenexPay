@@ -24,10 +24,9 @@ class _ChatPageState extends State<ChatPage> {
     try {
       conversationId = await SupabaseService.getOrCreateSupportChat();
       final aiState = await SupabaseService.supportAiState(conversationId!);
-      final handoffReason = '${aiState?['handoff_reason'] ?? ''}';
-      final realAdminHandoff = aiState?['status'] == 'admin_handoff' &&
-          handoffReason == 'AI requested Admin handoff.';
-      if (realAdminHandoff && mounted) {
+      if (aiState?['status'] == 'admin_handoff' &&
+          aiState?['handoff_reason'] == 'AI requested Admin handoff.' &&
+          mounted) {
         aiActive = false;
         transferred = true;
       }
@@ -58,45 +57,62 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _send() async {
     final text = controller.text.trim();
     if (text.isEmpty || conversationId == null || sending) return;
+
     setState(() => sending = true);
     try {
       if (aiActive && !transferred) {
-        final result = await SupabaseService.aiSupportTurn(
+        try {
+          final result = await SupabaseService.aiSupportTurn(
+            conversationId: conversationId!,
+            message: text,
+          );
+
+          controller.clear();
+
+          final unavailable = result['ai_unavailable'] == true;
+          final handoff = result['handoff'] == true;
+          final reply = '${result['reply'] ?? ''}'.trim();
+
+          if (handoff) {
+            if (mounted) {
+              setState(() {
+                aiActive = false;
+                transferred = true;
+              });
+            }
+          }
+
+          if (unavailable) {
+            // Infrastructure/AI problems must NEVER transfer the user to Admin.
+            // Keep AI active so the user can retry the same conversation.
+            if (reply.isNotEmpty && mounted) _msg(reply);
+          } else if (handoff && mounted) {
+            _msg(reply.isNotEmpty
+                ? reply
+                : 'I am transferring this conversation to a ZenexPay Admin.');
+          }
+
+          await _load();
+        } catch (e) {
+          // IMPORTANT: never fall back to Admin just because the AI function
+          // failed. The conversation remains AI-first and the user can retry.
+          if (mounted) _msg(
+            'AI support is temporarily unavailable. Please try again in a moment.',
+          );
+        }
+      } else {
+        await SupabaseService.sendSupportMessage(
           conversationId: conversationId!,
           message: text,
         );
         controller.clear();
-
-        if (result['handoff'] == true) {
-          if (mounted) {
-            setState(() {
-              aiActive = false;
-              transferred = true;
-            });
-            _msg('This issue needs a ZenexPay Admin, so I am transferring the conversation.');
-          }
-        } else if (result['ai_unavailable'] == true) {
-          // Keep AI mode active. A temporary Gemini/API problem is NOT an
-          // Admin-handoff decision, so the user can retry without losing AI support.
-          if (mounted) {
-            _msg(result['reply']?.toString() ??
-                'AI support is temporarily unavailable. Please try again in a moment.');
-          }
-        }
-        await _load();
-      } else {
-        await SupabaseService.sendSupportMessage(conversationId: conversationId!, message: text);
-        controller.clear();
         await _load();
       }
     } catch (e) {
-      // Never turn an infrastructure/client exception into an Admin handoff.
-      // Admin handoff is decided only by the AI response itself.
-      if (mounted) {
-        _msg('AI support could not respond right now. Your AI support is still active; please try again.');
-      }
+      if (mounted) _msg(friendlyError(e));
+    } finally {
+      if (mounted) setState(() => sending = false);
     }
-    finally { if (mounted) setState(() => sending = false); }
   }
 
   void _msg(String x) => mounted ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(x.replaceFirst('Exception: ', '')), behavior: SnackBarBehavior.floating)) : null;
