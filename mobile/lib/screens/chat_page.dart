@@ -487,10 +487,6 @@ class _ChatPageState extends State<ChatPage> {
 
                 // -----------------------------------------------------------------
                 // HUMAN SUPPORT OPTION
-                //
-                // IMPORTANT:
-                // This is outside the Expanded chat area.
-                // The button is full-width so it cannot cause horizontal overflow.
                 // -----------------------------------------------------------------
 
                 if (showAdminOption && !transferred)
@@ -751,8 +747,7 @@ class _ChatPageState extends State<ChatPage> {
                     color: scheme.surface,
                     border: Border(
                       top: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                            .withOpacity(.45),
+                        color: scheme.outlineVariant.withOpacity(.45),
                       ),
                     ),
                   ),
